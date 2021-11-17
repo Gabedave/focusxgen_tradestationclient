@@ -56,71 +56,63 @@
     </div>
   </nav>
 
+  <!-- Right Card -->
+
   <div class="card bg-dark position-absolute" style="width: 18rem; right: 1rem; top: 4.5rem">
     <div class="card-body">
-      <h5 class="card-title">Balance card</h5>
-      <h6 class="card-subtitle mb-2 text-muted">Card subtitle</h6>
+      <div class="row">
+        <h5 class="card-title col">Active</h5>
+        <h5 class="card-title col text-success">Balance</h5>
+      </div>
+      <div class="row">
+        <h6 class="card-subtitle col mb-2 text-muted">Sub</h5>
+        <h6 class="card-subtitle col text-success mb-2 text-muted">Sub</h5>
+      </div>
+      <div class="row">
+        <h6 class="card-text col">123456</h5>
+        <h6 class="card-link col text-success">$900</h5>
+      </div>
       <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
-      <a href="#" class="card-link">Card link</a>
-      <a href="#" class="card-link">Another link</a>
+      <div class="text-center">
+        <a id="updateBalance" href="/api/updatebalance" class="btn btn-success btn-dark-outline">Update Balance</a>
+      </div>
     </div>
   </div>
+  
+  <!-- Left Card -->
 
+  <div class="card bg-dark position-absolute" style="width: 18rem; left: 1rem; top: 4.5rem">
+    <div class="card-header">
+      <h5 class="my-2">Active Orders</h5>
+    </div>
+    <ul class="list-group list-group-flush bg-dark">
+      <li class="list-group-item bg-dark text-light">Cras justo odio</li>
+      <li class="list-group-item bg-dark text-light">Dapibus ac facilisis in</li>
+      <li class="list-group-item bg-dark text-light">Vestibulum at eros</li>
+    </ul>
   </div>
 
-  <!--Login-->
-  <div class="container-fluid">
-    <div class="row py-5 my-5 justify-content-center">
-      <div class="border rounded col-12 col-md-5 col-sm-8 align-self-center">
-        <h1 class="row pt-5 m-0 justify-content-center text-center">FocusXgen TradeStation Client</h1>
-        <hr class="solid mb-5" style="margin-left: 35%; margin-right: 35%">
-        <div class="row justify-content-center text-center style="width:100%;"">
-          <h3 class="py-3">Active Accounts</h3>
-          <table class="table table-dark"  id="ActiveAccounts">
-            <thead>
-              <tr>
-                <th scope="col">Account</th>
-                <th scope="col">Username</th>
-                <th scope="col">Logged In</th>
-              </tr>
-              
-            </thead>
-            <tbody>
-              <tr>
-                <td>1001232</td>
-                <td>1229328</td>
-                <td>Connected</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="row my-2 p-2 justify-content-center">
-          <div class="col text-end">
-            <a class="btn btn-light" href="#">Add account</a>
-            
-          </div>
-          <div class="col text-start">
-            <a class="btn btn-light" href="#">Delete account</a>
-            
-          </div>
-        </div>
-        <div class="my-3 pb-3 text-center">
-          <a class="btn btn-light btn-dark-outline" href="#">Start</a>
-        </div>
-      </div>
 
+  <!--Body-->
+  <div class="container-fluid">
+    <div class="row my-3 justify-content-center">
+      <div class="col-4 card bg-dark text-center">
+        <h5 class="my-2">Create Order</h5>
+        
+      </div>
     </div>
     
-
-    <footer>
-      <!-- Copyright -->
-      <div class="footer-copyright text-center py-3 text-muted">© 2020 Copyright:
-        <a href=""> Built by David Gabriel</a>
-      </div>
-      <!-- Copyright -->
-    </footer>
-
   </div>
+
+  <footer>
+    <!-- Copyright -->
+    <div class="footer-copyright text-center py-3 text-muted">© 2020 Copyright:
+      <a href=""> Built by David Gabriel</a>
+    </div>
+    <!-- Copyright -->
+  </footer>
+
+  
 </body>
 </html>
  
