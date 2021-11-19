@@ -6,6 +6,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 <style>
   body {
     font-family: "Lato", sans-serif;
@@ -98,7 +99,7 @@
     <div class="row my-3 justify-content-center">
       <div class="col-4 card bg-dark text-center">
         <h5 class="my-2">Create Order</h5>
-        
+
       </div>
     </div>
     
@@ -112,7 +113,38 @@
     <!-- Copyright -->
   </footer>
 
-  
+  <!-- Bottom Left Card -->
+
+  <div class="card bg-dark position-absolute" style="width: 10rem; left: 10%; bottom: 0rem;">
+    <a class="btn btn-primary" href="/api/support">Contact Support</a>
+  </div>
+
+  <!-- Bottom Right Card -->
+
+  <div class="bg-light position-absolute rounded" style="right: 10%; bottom: 0rem;">
+    <p class="text-center h6 p-1 mx-3 my-1 text-dark"> Time ... 
+      <a><span class="hours"></span></a> :
+      <a><span class="min"></span></a> :
+      <a><span class="sec"></span></a>
+    </p>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+    setInterval( function() {
+    var hours = new Date().getHours();
+    $(".hours").html(( hours < 10 ? "0" : "" ) + hours);
+    }, 1000);
+    setInterval( function() {
+    var minutes = new Date().getMinutes();
+    $(".min").html(( minutes < 10 ? "0" : "" ) + minutes);
+    },1000);
+    setInterval( function() {
+    var seconds = new Date().getSeconds();
+    $(".sec").html(( seconds < 10 ? "0" : "" ) + seconds);
+    },1000);
+    });
+  </script>
 </body>
 </html>
  
