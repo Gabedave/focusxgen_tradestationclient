@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 <style>
   body {
     font-family: "Lato", sans-serif;
@@ -44,13 +45,13 @@
             <a class="nav-link active" aria-current="page" href="#">Home</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="nav-link" href="https://www.tradestation.com">TradeStation</a>
+            <a class="nav-link active" href="https://www.tradestation.com">TradeStation</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="nav-link" href="/login">Add Account</a>
+            <a class="nav-link active" href="/login">Add Account</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="btn btn-outline-danger nav-link" href="/logout">Logout</a>
+            <a class="btn btn-outline-danger" href="/logout">Logout</a>
           </li>
         </ul>
       </div>
@@ -62,88 +63,205 @@
   <div class="card bg-dark position-absolute" style="width: 18rem; right: 1rem; top: 4.5rem">
     <div class="card-body">
       <div class="row">
-        <h5 class="card-title col">Active</h5>
+        <h5 class="card-title col">Accounts</h5>
         <h5 class="card-title col text-success">Balance</h5>
       </div>
-      <div class="row">
+      <!-- <div class="row">
         <h6 class="card-subtitle col mb-2 text-muted">Sub</h5>
         <h6 class="card-subtitle col text-success mb-2 text-muted">Sub</h5>
+      </div> -->
+      <div id="balances">
+        {% for o in balances %}
+          <div class="row">
+            <h6 class="card-text col">{{ o['AccountID'] }}</h5>
+            <h6 class="card-link col text-success">${{ o['CashBalance'] }}</h5>
+          </div>
+        {% endfor %}
       </div>
-      <div class="row">
-        <h6 class="card-text col">123456</h5>
-        <h6 class="card-link col text-success">$900</h5>
-      </div>
-      <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's content.</p>
+      <p class="card-text"></p>
       <div class="text-center">
-        <a id="updateBalance" href="/api/updatebalance" class="btn btn-success btn-dark-outline">Update Balance</a>
+        <a id="updateBalance" onclick="UpdateBalances()" class="btn btn-success btn-dark-outline">Update Balances</a>
       </div>
     </div>
   </div>
   
   <!-- Left Card -->
 
-  <div class="card bg-dark position-absolute" style="width: 18rem; left: 1rem; top: 4.5rem">
+  <div class="card bg-dark position-absolute" style="width: 20rem; left: 1rem; top: 4.5rem">
     <div class="card-header">
       <h5 class="my-2">Active Orders</h5>
     </div>
-    <ul class="list-group list-group-flush bg-dark">
-      <li class="list-group-item bg-dark text-light">Cras justo odio</li>
-      <li class="list-group-item bg-dark text-light">Dapibus ac facilisis in</li>
-      <li class="list-group-item bg-dark text-light">Vestibulum at eros</li>
-    </ul>
+    <table class="table table-dark table-hover text-center">
+      <thead>
+        <tr>
+          <th scope="col">Order ID</th>
+          <th scope="col">View Order</th>
+          <th scope="col">Cancel Order</th>
+        </tr>
+      </thead>
+      <tbody class="align-middle">
+        {% for o in order_ids %}
+          <tr id="{{ o }}">
+            <td>{{ o }}</td>
+            <td><a class="btn btn-outline-light" onclick="ViewOrder({{ o }})">View</a></td>
+            <td><a class="btn btn-outline-danger" onclick="CancelOrder({{ o }})">Cancel</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
 
   <!--Body-->
   <div class="container-fluid">
     <div class="row my-3 justify-content-center">
-      <div class="col-4 card bg-dark text-center">
-        <h5 class="my-2">Create Order</h5>
-
+      <div id="alert" class="col-5 card bg-dark text-center">
+        <div class="card-header">
+          <h5 class="my-2">Create Order</h5>
+        </div>
+        <form method="post" class="container-fluid py-3">
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="OrderType">Order Type</label>
+            <select class="col form-control" id="OrderType" required>
+              <option>Limit</option>
+              <option>Stop Market</option>
+              <option>Market</option>
+              <option>Stop Limit</option>
+            </select>
+          </div>
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="Quantity">Quantity</label>
+            <input type="number" class="col form-control" id="Quantity" placeholder="Quantity of Order" step=".01" required>
+          </div>
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="Symbol">Symbol</label>
+            <input type="text" class="col form-control" id="Symbol" placeholder="Symbol" required>
+          </div>
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="TradeAction">Order Type</label>
+            <select class="col form-control" id="TradeAction" required>
+              <option value="Call">Call</option>
+              <option value="Put">Put</option>
+            </select>
+          </div>
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="StopPrice">Stop Price (optional)</label>
+            <input type="number" class="col form-control" id="StopPrice" placeholder="Stop price for Order" step=".01">
+          </div>
+          <div class="form-group row py-2">
+            <label class="col-3 align-self-center" for="TradeAction">Order Type</label>
+            <select class="col form-control" id="TradeAction" required>
+              <option value="GTC">GTC - Good till canceled</option>
+              <option value="DAY">DAY - Day, valid until the end of the regular trading session.</option>
+              <option value="DYP">DYP - Day Plus; valid until the end of the extended trading session.</option>
+              <option value="GCP">GCP - Good till canceled plus</option>
+              <option value="GTD">GTD - Good through date</option>
+              <option value="GDP">GDP - Good through date plus</option>
+              <option value="OPG">OPG - At the opening; only valid for listed stocks at the opening session Price.</option>
+              <option value="CLO">CLO - On Close; orders that target the closing session of an exchange.</option>
+              <option value="IOC">IOC - Immediate or Cancel; filled immediately or canceled, partial fills are accepted.</option>
+              <option value="FOK">FOK - Fill or Kill; orders are filled entirely or canceled, partial fills are not accepted.</option>
+              <option value="1">1 - 1 minute; expires after the 1 minute.</option>
+              <option value="3">3 - 3 minutes; expires after the 3 minutes.</option>
+              <option value="5">5 - 5 minutes; expires after the 5 minutes.</option>
+            </select>
+          </div>
+          <div class="row my-2 p-2 justify-content-center gx-3">
+            <div class="col text-end">
+              <button type="submit" value="Call" class="btn btn-primary px-5">Call</button>
+            </div>
+            <div class="col text-start">
+              <button type="submit" value="Put" class="btn btn-danger px-5">Put</button>
+            </div>
+          </div>
+        </form>
+        
       </div>
     </div>
     
   </div>
 
-  <footer>
+  <footer class="text-center">
     <!-- Copyright -->
-    <div class="footer-copyright text-center py-3 text-muted">© 2020 Copyright:
-      <a href=""> Built by David Gabriel</a>
+    <div class="footer-copyright py-3 text-muted pt-5">© 2020 Copyright:
+      <a href="">FocusXgen | Powered by David Gabriel</a>
     </div>
     <!-- Copyright -->
   </footer>
 
   <!-- Bottom Left Card -->
 
-  <div class="card bg-dark position-absolute" style="width: 10rem; left: 10%; bottom: 0rem;">
-    <a class="btn btn-primary" href="/api/support">Contact Support</a>
+  <div class="card bg-dark position-fixed" style="width: 10rem; left: 1%; bottom: 0rem;">
+    <a class="btn btn-primary" href="mailto:gabedave01@gmail.com">Contact Support</a>
   </div>
 
   <!-- Bottom Right Card -->
 
-  <div class="bg-light position-absolute rounded" style="right: 10%; bottom: 0rem;">
-    <p class="text-center h6 p-1 mx-3 my-1 text-dark"> Time ... 
-      <a><span class="hours"></span></a> :
-      <a><span class="min"></span></a> :
-      <a><span class="sec"></span></a>
-    </p>
+  <div class="bg-light position-fixed rounded" style="right: 1%; bottom: 0rem;">
+    <p class="text-center h6 p-1 mx-3 my-1 text-dark"> Time : <a><span class="time"></span></a></p>
   </div>
 
   <script>
     $(document).ready(function() {
-    setInterval( function() {
-    var hours = new Date().getHours();
-    $(".hours").html(( hours < 10 ? "0" : "" ) + hours);
-    }, 1000);
-    setInterval( function() {
-    var minutes = new Date().getMinutes();
-    $(".min").html(( minutes < 10 ? "0" : "" ) + minutes);
-    },1000);
-    setInterval( function() {
-    var seconds = new Date().getSeconds();
-    $(".sec").html(( seconds < 10 ? "0" : "" ) + seconds);
-    },1000);
+
+      setInterval( function() {
+      var datetime = new Date()
+      var time = datetime.toTimeString().split(" ").filter((part)=>!part.startsWith('GMT')).join(" ");
+      $(".time").html(time);
+      }, 1000);
     });
+  </script>
+  <script>
+    async function ViewOrder(orderId) {
+      await fetch(`/api/vieworder/${orderId}`).then((res) => res.json()).then(async (order) => {
+      let orderData = ""
+      for (const par in order) {
+        if (par === 'OrderID') continue;
+        orderData += `${par} : ${order[par]}<br>`
+      }
+      document.getElementById("alert").insertAdjacentHTML('afterend', `<div class="row justify-content-center"><div id="viewalert${orderId}"  class="col-5 alert alert-success alert-dismissible fade show" role="alert"> \
+      <strong>Order ${order['OrderID']}</strong><br>${orderData}\
+      <button type="button" class="close rounded" data-dismiss="alert" aria-label="Close"> \
+        <span aria-hidden="true">&times;</span></button></div></div>`)
+      $('alert').alert()
+      })
+    }
+    async function CancelOrder(orderId) {
+      await fetch(`/api/cancelorder/${orderId}`).then((res) => res.json()).then(async (res) => {
+      document.getElementById("alert").insertAdjacentHTML('afterend', `<div class="row justify-content-center"><div id="cancelalert${orderId}" class="col-5 card alert alert-danger alert-dismissible fade show m-1" role="alert"> \
+      <strong>${res['Message']}</strong></div></div>`)
+      if (res["Message"] === "Order successfully canceled.") {
+        setTimeout(() => {
+          $(`#${orderId}`).remove();
+          $(`#cancelalert${orderId}`).alert('close')
+        }
+          , 2000
+        )
+      }
+      })
+    }
+    async function UpdateBalances(orderId) {
+      await fetch(`/api/updatebalances`).then((res) => res.json()).then(async (res) => {
+        document.getElementById("balances").innerHTML = ""
+        res.data.forEach((obj) => {
+          let balanceData = `<div class="row">
+              <h6 class="card-text col">${obj.AccountID}</h5>
+              <h6 class="card-link col text-success">$${obj.CashBalance}</h5>
+            </div>`
+          document.getElementById("balances").innerHTML += balanceData
+        })
+        
+        if (res["Message"] === "Order successfully canceled.") {
+          setTimeout(() => {
+            $(`#${orderId}`).remove();
+            $(`#cancelalert${orderId}`).alert('close')
+          }
+            , 2000
+          )
+        }
+        })
+    }
+    
   </script>
 </body>
 </html>

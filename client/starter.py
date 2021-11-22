@@ -10,7 +10,6 @@ from ts.client import TradeStationClient
 
 import config.settings as constants
 
-# print(TradeStationClient('frank',))
 
 
 class Client(object):

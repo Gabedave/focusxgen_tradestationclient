@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from routes.home import router as home
 from routes.login import router as login
+from routes.api import router as api
 
 app = FastAPI(title='tradestation focusxgen app', openapi_url="/openapi.json")
 
@@ -11,6 +12,7 @@ app.mount("/static", StaticFiles(directory="assets/static"), name="static")
 
 app.include_router(home)
 app.include_router(login)
+app.include_router(api)
 
 
 if __name__ == '__main__':
