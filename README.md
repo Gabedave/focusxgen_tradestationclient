@@ -4,15 +4,9 @@ FocusXgen Client for Options trading with multiple accounts
 
 ## Table of Contents
 
-- [Overview](#overview)
-- [What's in the API](#whats-in-the-api)
 - [Requirements](#requirements)
-- [API Key & Credentials](#api-key-and-credentials)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Features](#features)
-- [Documentation & Resources](#documentation-and-resources)
-- [About this Project](#about-this-project)
 
 ## Requirements
 
