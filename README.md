@@ -16,9 +16,14 @@ The following requirements must be met to use this API:
 
 ## Installation
 
-Clone to repo from github and add a configuration file to the /config folder
+Clone to repo from github
+```
+git clone https://github.com/Gabedave/focusxgen_tradestationclient.git
+```
 
-sample.json
+Add configuration file named "config.json" to the /config folder
+
+"sample.json"
 ```
 [
     {
