@@ -31,40 +31,28 @@
   <!--Login-->
   <div class="container-fluid">
     <div class="row py-5 my-5 justify-content-center">
-      <form method="post" class="border rounded col-12 col-md-5 col-sm-8 align-self-center">
-        <h1 class="row pt-5 m-0 justify-content-center text-center">FocusXgen TradeStation Client</h1>
+      <form method="post" class="border rounded col-12 col-md-6 col-sm-10 align-self-center">
+        <h3 class="row pt-5 m-0 justify-content-center text-center">FocusXgen TradeStation Client</h1>
         <hr class="solid mb-5" style="margin-left: 35%; margin-right: 35%">
-        <div class="row justify-content-center text-center style="width:100%;"">
-          <h3 class="py-3">Active Accounts</h3>
-          <table class="table table-dark"  id="ActiveAccounts">
+        <div class="row justify-content-center text-center table-responsive">
+          <h5 class="py-3">Active Accounts</h3>
+          <table class="small table table-sm table-dark">
             <thead>
               <tr>
                 <th scope="col">Account</th>
                 <th scope="col">Username</th>
                 <th scope="col">Logged In</th>
+                <th scope="col"></th>
               </tr>
               
             </thead>
-            <tbody>
-              <tr>
-                <td>1001232</td>
-                <td>1229328</td>
-                <td>Connected</td>
-              </tr>
+            <tbody id="ActiveAccounts" class="align-middle">
+             
             </tbody>
           </table>
         </div>
-        <div class="row my-2 p-2 justify-content-center">
-          <div class="col text-end">
-            <a class="btn btn-primary" href="#">Add account</a>
-            
-          </div>
-          <div class="col text-start">
-            <a class="btn btn-danger" href="#">Delete account</a>
-          </div>
-        </div>
         <div class="my-3 pb-3 text-center">
-          <a class="btn btn-success btn-dark-outline" href="/home">Start</a>
+          <a class="btn btn-success btn-dark-outline" onclick="Start()">Start</a>
         </div>
       </form>
 
@@ -79,7 +67,45 @@
       <!-- Copyright -->
     </footer>
 
+    <script>
+      (async function Accounts(orderId) {
+      await fetch(`/api/accounts`).then((res) => res.json()).then(async (allacccounts) => {
+        console.log(allacccounts)
+
+        table = document.getElementById("ActiveAccounts")
+        for (i = 0; i < allacccounts.length; i++) {
+          let account = allacccounts[i];
+          let loggedIn;
+          if (account['log_in'] && account['auth_state']) {
+            loggedIn = "Connected";
+          } else {loggedIn = "Disconnected"};
+
+          let row = table.insertRow(i);
+          let cell0 = row.insertCell(0);
+          let cell1 = row.insertCell(1);
+          let cell2 = row.insertCell(2);
+          let cell3 = row.insertCell(3);
+          cell0.innerHTML = account['client_id'];
+          cell1.innerHTML = account['username'];
+          cell2.innerHTML = loggedIn;
+          cell3.innerHTML = "<a class='btn btn-primary' href='/login?client_id=" + account['client_id'] + "'>Login</a>";
+        };
+        })
+      })()
+
+      async function Start() {
+        await fetch("/api/start")
+        .then(response => response.json())
+        .then(res => {
+          if (res.success) {
+            window.location.href = res.data.redirect;
+          } else {
+            alert(res.errors.detail)
+          }
+        })
+      }
+    </script>
+
   </div>
 </body>
 </html>
- 

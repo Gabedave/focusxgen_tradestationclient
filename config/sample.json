@@ -1,0 +1,17 @@
+[
+    {
+        "username" : "username1",
+        "client_id" : "client_id1",
+        "client_secret": "client_secret1"
+    },
+    {
+        "username" : "username2",
+        "client_id" : "client_id2",
+        "client_secret": "client_secret2"
+    },
+    {
+        "username" : "username3",
+        "client_id" : "client_id3",
+        "client_secret": "client_secret3"
+    }
+]

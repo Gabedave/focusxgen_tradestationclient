@@ -1,137 +1,285 @@
-"""Module for IQ Option API starter."""
+"""Module for TradeStationClient API starter."""
 
 import os
 import logging
 import sys
 import time
+import asyncio
+import json
+from copy import deepcopy
+from typing import Union
 from pprint import pprint
+from datetime import datetime
 
 from ts.client import TradeStationClient
 
-import config.settings as constants
-
+import config.settings as settings
 
 
 class Client(object):
     """Calls for TradeStationClient API."""
 
-    def __init__(self, config):
-        """
-        :param config: The instance of :class:`Settings
-            <iqoptionpy.settings.settigns.Settings>`.
+    def __init__(self, config: list):
+        """ Initializes the FocusXgen Client
+        
+         Arguments:
+        ----
+        config (list): The list of configurations for each profile
         """
         self.config = config
-        self.api = TradeStationClient(
-            username=self.config['username'],
-            client_id=self.config['client_id'],
-            client_secret=self.config['client_secret'],
-            redirect_uri=self.config['redirect_uri'],
-            scope=self.config['scope'],
-            paper_trading=self.config['paper_trading']
-        )
+        self.configure_profiles(True)
+        self.paper_trading
+        self.client__ = []
 
-    def create_connection(self):
-        """Method for create connection to IQ Option API."""
-        logger = logging.getLogger(__name__)
-        logger.info("Create connection.")
+        dir_path = os.getcwd()
+        filename = 'store.json'
+        file_path = os.path.join(dir_path, 'client/orders', filename)
 
+        if os.path.isfile(file_path):
+            with open(file=file_path) as f:
+                self.store = json.load(fp=f)
+        else: self.store = {}
+
+    def configure_profiles(self, paper_trading: bool = True) -> None:
+        self.paper_trading = paper_trading
+        self.client = {}
+        for profile in self.config:
+            _profile :TradeStationClient = TradeStationClient(
+                username = profile['username'],
+                client_id = profile['client_id'],
+                client_secret = profile['client_secret'],
+                redirect_uri = profile['redirect_uri'],
+                scope = profile['scope'],
+                paper_trading = paper_trading
+            )
+            self.client[profile['client_id']] = _profile
+
+    def save_login(self, client_id: str) -> None:
+        self.client__.append(client_id)
+
+    async def profile_login(self, client_id: str) -> Union[str,bool]:
+        url = await self.client[client_id].login()
+        return url
+
+    def profile_complete_login(self, client_id: str, full_redirect_uri: str) -> bool:
+        # print(client_id, full_redirect_uri)
+        return self.client[client_id].complete_login(full_redirect_uri)
+
+    async def logout(self) -> None:
         try:
-            check, reason = self.api.connect()
-        except Exception as e:
-            logger.info('Error: ', e)
-            return None
+            result = await asyncio.gather(*[x.logout(temporary = False) for x in self.client.values])
+            if result: return True
+            else: raise Exception('Logout Failed')
+        except:
+            return False
 
-        if check:
-            logger.info("Successfully connected.")
-            if self.api.check_connect == False:
-                logger.info("Websocket did not respond")
-                return None
-        else:
-            logger.info("Connection Failed")
-            logger.error(reason)
-            raise
-            # return None
-        return check, reason
+    def profile_logout(self, client_id: str) -> None:
+        try:
+            self.client[client_id].logout(temporary=True)
+            return True
+        except:
+            return False
 
-    def start_signalers(self, stockframe):
-        """Method for start signalers."""
-        logger = logging.getLogger(__name__)
-        logger.info("Create signalers.")
-        signalers = []
-        patterns = self.config.get_trade_patterns()
-        
-        for active in self.actives:
-            signaler = create_signaler(self.api, active, stockframe, self.balance)
-            signaler.set_patterns(patterns)
-            signaler.start()
-            signalers.append(signaler)
-        return signalers
+    async def update_balances(self) -> dict:
+        new_balances = {}
+        for client_id in self.client__:
+            profile = self.client[client_id]
+            # user_accounts = profile.user_accounts()
+            # cash_acccounts = [x['AccountID'] for x in user_accounts if x['AccountType'] == "Cash"]
+            Balances: dict = profile.account_balances()['Balances'][0].items() #assumption of one account in each profile
+            new_balances[client_id] = {key: Balances[key] for key in ['AccountID','CashBalance']}
 
-    def start_traders(self):
-        """Method for start traders."""
-        logger = logging.getLogger(__name__)
-        logger.info("Create traders.")
-        traders = []
+    def change_trading_mode(self, paper_trading: bool = True):
+        self.configure_profiles(paper_trading)
+        return True
+
+    # def get_profile_position(self, client_id: str) -> dict:
+    #     profile = self.client[client_id]
+    #     Position: dict = profile.account_positions()['Positions']
+    #     Balance: dict = profile.account_balances()['Balances']
+
+    #     # Append Account Balance to the Position dict
+    #     for p, p_ in Position.items():
+    #         for b, b_ in Balance.items():
+    #             if b_['AccountID'] == p_['AccountID'] and b_['AccountType'] == "Cash": # Cash AccountType
+    #                 p_['CashBalance'] = b_['CashBalance']
+    #     return p_
+
+    async def get_all_positions(self) -> dict:
+        all_positions = {}
+        for client_id in self.client__:
+            profile = self.client[client_id]
+            res = await asyncio.gather(*[profile.account_positions(), profile.account_balances()])
+            Positions: list = res[0]['Positions']
+            Balances: list = res[1]['Balances']
+
+            all_positions[client_id] = []
+
+            # Append Account Balance to the Position dict
+            for p_ in Positions:
+                for b_ in Balances:
+                    if b_['AccountID'] == p_['AccountID']:
+                        p_['CashBalance'] = b_['CashBalance']
+                        p_['BuyingPower'] = b_['BuyingPower']
+                        p_['Equity'] = b_['Equity']
+                        all_positions[client_id].append(p_)
+        # pprint(all_positions)
+        self.positions = all_positions
+        return all_positions
     
-        for active in self.actives:
-            trader = create_trader(self.api, active)
-            trader.start()
-            traders.append(trader)
-        return traders
+    # async def get_all_positions_stream(self):
+    #     while True:
+    #         res = await self.get_all_positions()
+    #         await asyncio.sleep(5)
+    #         yield json.dumps(res)
+            
+
+    def date_parse(self, data):
+        # datetime = int(list(filter(lambda x: x['ExpirationType'] == "Weekly", data))[0]['ExpirationDate'].strip('/Date()/ '))
+        datetim = int(data['ExpirationDate'].strip('/Date() '))
+        date_range = data['ExpirationType']
+        return datetime.fromtimestamp(datetim/1000).strftime('%Y-%m-%d %H:%M:%S') + ' - ' + date_range
+
+    async def get_symbol_info(self, symbol: str, asset_category = None) -> list:
+        if self.client__ == []:
+            raise Exception('Please Login')
+        profile = self.client[self.client__[0]]
+        symbol_info = await profile.search_for_symbol(symbol.strip(), asset_category)
+        symbol_expiration_time_dict = {}
+        # pprint(symbol_info[0])
+        for item in symbol_info:
+            expiration_date = self.date_parse(item)
+            if expiration_date not in symbol_expiration_time_dict:
+                symbol_expiration_time_dict[expiration_date] = {}
+
+            if "Description" not in symbol_expiration_time_dict:
+                symbol_expiration_time_dict["Description"] = item['Description']
+
+            if str(item["StrikePrice"]) not in symbol_expiration_time_dict[expiration_date]:
+                symbol_expiration_time_dict[expiration_date][str(item["StrikePrice"])] = {}
+
+            if item["OptionType"] not in symbol_expiration_time_dict[expiration_date][str(item["StrikePrice"])]:
+                symbol_expiration_time_dict[expiration_date][str(item["StrikePrice"])][item["OptionType"]] = item["Name"]
+
+        # pprint(symbol_expiration_time_dict)
+        return symbol_expiration_time_dict
+
+    async def execute_order(self, order: dict) -> dict:
+        async def execute(x):
+            profile = self.client[x]
+
+            if 'AccountID' not in profile.config:
+                accounts = [(x['AccountID'], x['AccountType']) for x in (await profile.user_accounts())['Accounts']]
+            else: accounts = profile.config['AccountID']
+                
+            order_ = deepcopy(order)
+            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin', accounts))[0][0]
+            
+            # pprint({x: order_})
+            res = await profile.submit_order(order_)
+            if 'Error' in res:
+                raise Exception(res['Error'], res['Message'])
+            return profile.config['client_id'], res
+
+        gather = await asyncio.gather(*[execute(x) for x in self.client__])
+        responses = {x: y for x, y in gather}
+        return responses
+
+    async def confirm_order(self, order: dict) -> dict:
+        async def execute(x):
+            profile = self.client[x]
+
+            if 'AccountID' not in profile.config:
+                accounts = [(x['AccountID'], x['AccountType']) for x in (await profile.user_accounts())['Accounts']]
+            else: accounts = profile.config['AccountID']
+                
+            order_ = deepcopy(order)
+            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin', accounts))[0][0]
+            
+            # pprint(order_)
+            res = await profile.confirm_order(order_)
+            if 'Error' in res:
+                raise Exception(res['Error'])
+            return profile.config['client_id'], res
+
+        gather = await asyncio.gather(*[execute(x) for x in self.client__])
+        responses = {x: y for x, y in gather}
+        return responses
+
+    async def store_orders(self, dict_: dict) -> dict:
+
+        order_id = 'order ' + str(time.time())
+        
+        order = dict(filter(lambda x: "Error" not in x[1]["Orders"][0], dict_.items()))
+        if order != {}:
+            self.store[order_id] = order
+
+        dir_path = os.getcwd()
+        filename = 'store.json'
+        file_path = os.path.join(dir_path, 'client/orders', filename)
+
+        with open(file_path, 'w+') as f:
+            json.dump(self.store, f, indent=4)
+
+        return self.store.get(order_id)
+
+    async def get_all_orders(self):
+        async def get(x):
+            profile = self.client[x]
+
+            res = await profile.get_orders()
+            # pprint(res)
+
+            if res['Errors'] != []:
+                raise Exception(res["Errors"])
+            return x, list(filter(lambda x: x['StatusDescription'] != 'Rejected', res['Orders']))
+
+        gather = await asyncio.gather(*[get(x) for x in self.client__])
+        responses = {x: y for x, y in gather}
+        return responses
+
+    async def sort_orders(self):
+        orders_ = await self.get_all_orders()
+        # pprint(orders_)
+        
+        # if self.store == {}: return self.store
+        # for order_id in self.store:
+        #     if not self.store[order_id]: del self.store[order_id]
+
+        for order_id in self.store:
+            if not self.store[order_id]: 
+                print("nothing in store")
+                continue
+            for client_id in self.client__:
+                if orders_[client_id] == []: return self.store
+                for detail in orders_[client_id]:
+                    if self.store[order_id][client_id]['Orders'][0]['OrderID'] == detail['OrderID']:
+                        self.store[order_id][client_id]['Orders'][0]['StatusDescription'] = detail['StatusDescription']
+                    else:
+                        del self.store[order_id]
+                        continue
+
+        return self.store
+        
+    async def cancel_order(self, order_id):
+        async def cancel(x):
+            profile = self.client[x]
     
-    def update_balance(self):
-        self.balance = self.api.get_balance()
+            res = await profile.cancel_order(self.store[order_id][x]['Orders'][0]['OrderID'])
+            # pprint(res)
 
-    def change_balance_mode(self, balance_mode):
-        """Method to select balance mode."""
-        self.api.change_balance(balance_mode)
-        self.balance = self.api.get_balance()
+            # if res['Errors'] != []:
+            #     raise Exception(res["Errors"])
+
+            if res['Message'] == "Order successfully canceled.":
+                del self.store[order_id][x]
+            
+            return x, res
+
+        gather = await asyncio.gather(*[cancel(x) for x in self.client__])
+        responses = {x: y for x, y in gather}
+        return responses
         
-        logger = logging.getLogger(__name__)
-        logger.info("Changed balance to {}. Balance is {}".format(balance_mode,self.balance))
-        return balance_mode, self.balance
-
-    def start_data_frame(self):
-        """Set up data frame"""
-        logger = logging.getLogger(__name__)
-
-        price_df = Robot(self.api, self.actives)
-        price_df.initiate_frame()
-        price_df.add_indicators()
-        logger.info("Stockframe initiated and indicators added")
-        return price_df
-    
-    def check_open_markets(self):
-        logger = logging.getLogger(__name__)
-
-        all_markets = self.api.get_all_open_time()
-        current_open_markets = []
-        actives_not_open = []
-
-        for dirr in (['binary','turbo']):
-            for symbol in all_markets[dirr]: 
-                if all_markets[dirr][symbol]['open'] == True:
-                    current_open_markets.append(symbol)
-
-        for active in self.config.get_trade_actives():
-            if active not in current_open_markets:
-                actives_not_open.append(active)
-        
-        current_open_markets = list(set(self.config.get_trade_actives()) - set(actives_not_open))
-
-        if actives_not_open:
-            logger.info("{} not open right now".format(actives_not_open))
-            logger.info("{} open".format(current_open_markets))
-        else:
-            logger.info(f"All symbols open {self.actives}")
-        
-        self.actives = current_open_markets
-        if current_open_markets == []:
-            logger.info('Market closed for all actives')
-            return None
-        time.sleep(2)
-        return self.actives
-
 
 def _prepare_logging():
     """Prepare logging for starter."""
@@ -206,12 +354,26 @@ def _prepare_logging():
     balance_mode_logger.addHandler(balance_mode_file_handler)
 
 
-if __name__ == '__main__':
-    config = {**constants.CONNECTION_SETTINGS}
-    config['username'] = 'Test'
-    config['client_id'] = 'adsfa'
-    config['client_secret'] = 'adsf'
+async def main():
+    config = settings.load_config()
     pprint(config)
     client = Client(config)
-    pprint(client.api)
+    pprint(client.client)
+    client_id = list(client.client.keys())[0]
+    await client.profile_login(client_id)
+    client.save_login(client_id)
+    # pprint(client.profile_complete_login("SM63OK896BoMlmMWy6cQpSmuJkAYlXg6","127.0.0.1:3000/?code=232425232342"))
+    # pprint(client.profile_login(config[0]['client_id']))
+    # print(client.change_trading_mode())
+    # print(client.update_balances())
+    # for key, _ in client.client.items():
+    #     pprint(_.config)
+    # pprint(await client.get_all_positions())
+    # pprint(client.get_symbol_info('AAPL'))
+    # pprint(await client.execute_order({'Symbol': 'AAPL', 'Quantity': 67, 'OrderType': 'Market', 'TradeAction': 'BUY', 'TimeInForce': {'Duration': 'DAY'}, 'Route': 'Intelligent', 'AccountID': 'SIM1428415X'}))
+    pprint(await client.sort_orders())
+    pprint(await client.cancel_order("order 1639501743.473545"))
+
+if __name__ == '__main__':
+    asyncio.run(main())
 

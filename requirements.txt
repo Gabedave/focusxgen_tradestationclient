@@ -1,0 +1,3 @@
+Jinja2==3.0.3
+orjson==3.6.5
+ts @ git+https://github.com/Gabedave/tradestation-python-api.git@3aaa28f257d62523212f831cbf7753a5ab4d29ae

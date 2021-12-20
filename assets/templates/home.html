@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<title>ALGO BY DAVID GABRIEL</title>
+<title>FocusXgen TradeStation Client</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
@@ -28,6 +28,14 @@
   hr.solid {
     border-top: 2px solid #ffd000;
   }
+
+  .smallie {
+    font-size: 1em;
+  }
+
+  th {
+    padding: .3em !important;
+  }
 </style>
 <body>
 
@@ -35,234 +43,768 @@
 
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
-      <a class="navbar-brand mx-5" href="#"><strong>FocusXgen TradeStation Client</strong></a>
+      <a class="navbar-brand mx-4 my-0" href="#">FocusXgen TradeStation Client</a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
       <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
           <li class="nav-item mx-3">
-            <a class="nav-link active" aria-current="page" href="#">Home</a>
+            <a class="nav-link active small" aria-current="page" href="#">Home</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="nav-link active" href="https://www.tradestation.com">TradeStation</a>
+            <a class="nav-link active small" href="https://www.tradestation.com">TradeStation</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="nav-link active" href="/login">Add Account</a>
+            <a class="nav-link active small" href="/login">Add Account</a>
           </li>
           <li class="nav-item mx-3">
-            <a class="btn btn-outline-danger" href="/logout">Logout</a>
+            <a class="btn btn-sm btn-outline-danger" onclick="Logout()">Logout</a>
           </li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Right Card -->
+  <!-- Right Cards -->
+  <div class="position-absolute m-1" style="width: 30%; right: .5rem; top: 4rem">
+    <div class="card bg-dark small">
+      <div class="card-body row m-0 gx-0">
+        <div class="col-8 text-center align-self-center">
+          <a id="tradingMode" class="strong btn btn-lg btn-success btn-light-outline p-2 px-5 m-0">{{ tradingMode }}</a>
+        </div>
+        <div class="col-4 text-center align-self-center">
+          <a id="tradingModeButton" onclick="ChangeTradingMode()" class="btn btn-sm btn-primary px-3">button</a>
+        </div>
+      </div>
+    </div>
+    <script>
+      window.addEventListener('load', () => {
+        document.getElementById('tradingMode').innerHTML == "SIM" ? 
+        setSIM() : setLIVE()
 
-  <div class="card bg-dark position-absolute" style="width: 18rem; right: 1rem; top: 4.5rem">
-    <div class="card-body">
-      <div class="row">
-        <h5 class="card-title col">Accounts</h5>
-        <h5 class="card-title col text-success">Balance</h5>
-      </div>
-      <!-- <div class="row">
-        <h6 class="card-subtitle col mb-2 text-muted">Sub</h5>
-        <h6 class="card-subtitle col text-success mb-2 text-muted">Sub</h5>
-      </div> -->
-      <div id="balances">
-        {% for o in balances %}
-          <div class="row">
-            <h6 class="card-text col">{{ o['AccountID'] }}</h5>
-            <h6 class="card-link col text-success">${{ o['CashBalance'] }}</h5>
+        function setSIM() {
+          document.getElementById('tradingModeButton').innerHTML = "LIVE";
+          document.getElementById('tradingMode').className = "strong btn btn-lg btn-danger btn-light-outline p-2 px-5 m-0";
+        }
+        function setLIVE() {
+          document.getElementById('tradingModeButton').innerHTML = "SIM";
+          document.getElementById('tradingMode').className = "strong btn btn-lg btn-success btn-light-outline p-2 px-5 m-0";
+        }
+
+        fetch("/api/start")
+        .then(response => response.json())
+        .then(res => {
+          if (!res.success) {
+            alert(res.errors.detail)
+            location.href = "/login"
+          }
+        })
+
+        fetch('/api/positions/stream')
+
+        ViewOrders()
+      })
+
+    </script>
+
+    <!-- Create Order form -->
+    <div class="card bg-dark my-2">
+      <div class="row my-2 justify-content-center">
+        <div id="alert" class="col">
+          <div class="row m-0">
+            <div class="card-header row gx-0">
+              <div class="col align-self-end">
+                <h6 class="">Create Order</h6>
+              </div>
+              <div id="OpenOrClose" form="Order" class="col align-self-end text-end">
+                <div class="small form-check form-check-inline mx-1">
+                  <input class="form-check-input" type="radio" name="OpenOrClose" id="Open" value="Open" checked>
+                  <label class="form-check-label" for="Open">
+                    Open
+                  </label>
+                </div>
+                <div class="small form-check form-check-inline mx-1">
+                  <input class="form-check-input" type="radio" name="OpenOrClose" id="Close" value="Close">
+                  <label class="form-check-label" for="Close">
+                    Close
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
-        {% endfor %}
+          <!-- <script>
+            document.getElementById('OpenOrClose').addEventListener('change', function (e) {
+              let target = e.target;
+              let message;
+              switch (target.id) {
+                case 'Open':
+                  message = 'The Pending radio button changed';
+                  break;
+                case 'resolved':
+                  message = 'The Resolved radio button changed';
+                  break;
+                case 'rejected':
+                  message = 'The Rejected radio button changed';
+                  break;
+              }
+              result.textContent = message;
+            });
+          </script> -->
+          <form action="" id="Order" method="POST" class="container-fluid py-2 small" >
+            <!-- <div class="form-group row py-1">
+              
+              <select class="col form-control smallie" id="OrderType" name="OrderType" onchange="checkOrderType(this.value)" required>
+                <option>Limit</option>
+                <option>Market</option>
+              </select>
+            </div> -->
+            <div id="OrderTypeDiv" class="form-group row py-2">
+              <label class="col-5 align-self-center">Order Type</label>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="OrderType" id="Limit" value="Limit" checked>
+                <label class="form-check-label" for="Limit">Limit</label>
+              </div>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="OrderType" id="Market" value="Market">
+                <label class="form-check-label" for="Market">Market</label>
+              </div>
+            </div>
+            <!-- <div class="form-group row py-1">
+              <label class="col-5 align-self-center" for="Option">Option</label>
+              <select id="Option" class="col form-control smallie" name="Option" required>
+                <option value="SO">Stock Option</option>
+                <option value="IO">Index Option</option>
+              </select>
+            </div> -->
+            <div id="OptionDiv" class="form-group row py-2">
+              <label class="col-5 align-self-center">Option</label>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="Option" id="Stock" value="SO" checked>
+                <label class="form-check-label" for="Limit">Stock</label>
+              </div>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="Option" id="Index" value="IO">
+                <label class="form-check-label" for="Market">Index</label>
+              </div>
+            </div>
+            <div class="form-group row py-1">
+              <label class="col-5 align-self-center" for="Symbol">Symbol</label>
+              <input id="Symbol" type="text" class="col form-control smallie" name="Symbol" placeholder="Symbol" required>
+              <a onclick="CheckSymbol()" class="col-2 btn btn-primary btn-sm pb-0 mx-1">Search</a>
+            </div>
+            <div id="Description" class="small"></div>
+            <div id="ExpirationDateDiv" class="form-group row py-1">
+              <label class="col-5 align-self-center" for="ExpirationDate">Expiration Date</label>
+              <select id="ExpirationDate" class="col form-control smallie" name="ExpirationDate" onchange="UpdateStrikePrices(this.value)" placeholder="Select Expiration Date" required>
+                <option disabled selected>Select Expiration Date</option>
+              </select>
+            </div>
+            <div id="StrikePriceDiv" class="form-group row py-1">
+              <label class="col-5 align-self-center" for="StrikePrice">Strike Price</label>
+              <select class="col form-control smallie" id="StrikePrice" name="StrikePrice" onchange="UpdateOptionName()" required>
+                <option disabled selected>Select Strike Price</option>
+              </select>
+            </div>
+            <!-- <div id="TradeActionDiv" class="form-group row py-1">
+              <label class="col-5 align-self-center" for="TradeAction">Trade Action</label>
+              <select id="TradeAction" class="col form-control smallie" name="TradeAction" placeholder="Select Trade Action" onchange="UpdateOptionName()" required>
+                <option disabled selected>Select Trade Action</option>
+                <option value="Call">Call</option>
+                <option value="Put">Put</option>
+              </select>
+            </div> -->
+            <div id="TradeActionDiv" class="form-group row py-2">
+              <label class="col-5 align-self-center">Trade Action</label>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="TradeAction" id="Call" value="Call" checked>
+                <label class="form-check-label" for="Limit">Call</label>
+              </div>
+              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                <input class="form-check-input" type="radio" name="TradeAction" id="Put" value="Put">
+                <label class="form-check-label" for="Market">Put</label>
+              </div>
+            </div>
+            <div class="form-group row py-1">
+              <label class="col-5 align-self-center" for="Quantity">Quantity</label>
+              <input id="Quantity" type="number" class="col form-control smallie" name="Quantity" onkeyup="CalculateMaxLoss()" placeholder="Quantity of Order" required>
+            </div>
+            <div class="form-group row py-1">
+              <label class="col-5 align-self-center" for="OptionName">Option Name</label>
+              <input id="OptionName" type="text" class="col form-control smallie" name="OptionName" placeholder="...OptionName" readonly>
+            </div>
+            <div id="LimitPriceDiv" class="form-group row py-1">
+              <label class="col-5 align-self-center" for="LimitPrice">Limit Price</label>
+              <input type="number" class="col form-control smallie" id="LimitPrice" onkeyup="CalculateMaxLoss()" name="LimitPrice" placeholder="Limit price for Order" step=".01" required>
+            </div>
+            <div id="MaxLossDiv" class="form-group row py-1">
+              <label class="col-5 align-self-center" for="MaxLoss">Max Loss</label>
+              <input id="MaxLoss" type="text" class="col form-control smallie" name="MaxLoss" placeholder="0.00" readonly>
+            </div>
+            <div class="row justify-content-center">
+              <!-- <div class="col text-center m-1 p-0">
+                <a type="submit" value="Confirm" onclick="ConfirmOrder()" class="btn btn-primary px-5 smallie">Confirm</a>
+              </div> -->
+              <div class="col text-center m-1 p-0">
+                <input type="submit" value="Execute" onclick="Order()" class="btn btn-danger px-5 smallie">
+              </div>
+            </div>
+            <div class="form-check form-switch small py-0 my-0">
+              <input id="ActivationRulesCheck" class="form-check-input" type="checkbox" onclick='ActivationDisplay(this.checked)'>
+              <label for="ActivationRulesCheck" class="form-check-label">Add Activation Rules</label>
+            </div>
+            <div class="form-check form-switch small py-0 my-0">
+              <input id="OrderBoxCheck" class="form-check-input" type="checkbox" onclick='OrderDisplay(this.checked)' checked>
+              <label for="OrderBoxCheck" class="form-check-label">Show Order Details</label>
+            </div>
+
+            <!-- Activation Rules -->
+            <div class="container-fluid" id="ActivationRules" hidden>
+              <div id="DeleteRuleButton" class="text-center small">
+                <a class="btn btn-danger p-1 m-1 btn-sm" onclick="DeleteRule()" disabled>Delete Rule</a>
+              </div>
+              <div class="row gx-1" name="Rule">
+                <div class="form-group col-2 align-self-center strong mt-3 text-warning"><p class="m-0 p-0 strong">Price</p></div>
+                <div class="form-group col-3 py-1 small">
+                  <label class="align-self-center" for="Predicate">Predicate</label>
+                  <select class="form-control form-control-sm" id="Predicate" name="Predicate" required disabled>
+                    <option value='Lt'><</option>
+                    <option value='Lte'><=</option>
+                    <option value='Gt'>></option>
+                    <option value='Gte'>>=</option>
+                  </select>
+                </div>
+                <div class="col-4 py-1 small">
+                  <label class="col align-self-center" for="Price">Price</label>
+                  <input type="number" class="col form-control form-control-sm" name="Price" placeholder="0.00" step='.01' required disabled>
+                </div>
+                <div id="AddRuleButton" class="col-3 align-self-center pt-2 small">
+                  <button type="button" class="btn btn-warning p-1 m-1 btn-sm" onclick="AddRule()" disabled>Add Rule</button>
+                </div>
+              </div>
+              <script>
+                function AddRule() {
+                  $("#AddRuleButton").remove();
+                  const count = document.querySelectorAll('div[name="AddRuleDiv"]').length + 1
+                  const newRule = 
+                  `<div name="AddRuleDiv"><div class="form-group row mx-5 px-4">
+                    <label class="text-warning col align-self-center small" for="Operator${count}">Operator</label>
+                    <select class="col form-control form-control-sm" id="Operator${count}" name="Operator${count}" required>
+                      <option value='And'>And</option>
+                      <option value='Or'>Or</option>
+                    </select>
+                  </div>` + `<div class="row gx-1" name="Rule">
+                    <div class="form-group col-2 align-self-center strong mt-3 text-warning"><p class="m-0 p-0 strong">Price</p></div>
+                    <div class="form-group col-3 py-1 small">
+                      <label class="align-self-center" for="Predicate${count}">Predicate</label>
+                      <select class="form-control form-control-sm" id="Predicate${count}" name="Predicate${count}" required>
+                        <option value='Lt'><</option>
+                        <option value='Lte'><=</option>
+                        <option value='Gt'>></option>
+                        <option value='Gte'>>=</option>
+                      </select>
+                    </div>
+                    <div class="col-4 py-1 small">
+                      <label class="col align-self-center" for="Price${count}">Price</label>
+                      <input type="number" class="col form-control form-control-sm" name="Price${count}" placeholder="0.00" step='.01' required>
+                    </div>
+                    <div id="AddRuleButton" class="col-3 align-self-center pt-2 small">
+                      <button class="btn btn-warning p-1 m-1 btn-sm" onclick="AddRule()">Add Rule</button>
+                    </div>
+                  </div></div>`
+
+                  $('#ActivationRules').append(newRule)
+                }
+
+                function DeleteRule() {
+                  let rules = document.querySelectorAll('div[name="AddRuleDiv"]'); // $("div[name='AddRuleDiv']")
+                  if (rules.length <= 0) {
+                    document.getElementById('ActivationRulesCheck').checked = false;
+                    ActivationDisplay(false);
+                  }
+                  else {
+                    rules[rules.length - 1].remove()
+                    addRulebutton = `
+                    <div id="AddRuleButton" class="col-3 align-self-center pt-2 small">
+                      <button class="btn btn-warning p-1 m-1 btn-sm" onclick="AddRule()">Add Rule</button>
+                    </div>`
+                    const rul = document.querySelectorAll('div[name="Rule"]')
+                    rul[rul.length - 1].innerHTML += addRulebutton
+                  }
+                }
+              </script>
+            </div>
+
+            <script type="text/javascript">
+              function getRadioValue(elementName) {
+                const rbs = document.querySelectorAll(`input[name="${elementName}"]`);
+                let selectedValue;
+                for (const rb of rbs) {
+                  if (rb.checked) {
+                    selectedValue = rb.value;
+                    break;
+                  }
+                }
+                return selectedValue
+              }
+
+              async function Order() {
+                $(document).on('submit', '#Order', function() {
+                  // const getOpenOrClose = () => {
+                  //   const rbs = document.querySelectorAll('input[name="OpenOrClose"]');
+                  //   let selectedValue;
+                  //   for (const rb of rbs) {
+                  //     if (rb.checked) {
+                  //       selectedValue = rb.id;
+                  //       break;
+                  //     }
+                  //   }
+                  //   return "OpenOrClose=" + selectedValue
+                  // }
+                  const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
+
+                  let data = [openOrClose, $('form#Order').serialize()].join('&')
+
+                  $.post(`/api/order/execute`, data, function(data) {
+                      alert(JSON.stringify(data));
+                    },
+                    'json' // I expect a JSON response
+                  )
+                  .fail((err) => alert('An error occured'))
+                  .always(() => {
+                    // setTimeout(location.href.reload(), 2000)
+                  })
+                  .then(() => location.reload())
+                  return false;
+                })
+              }
+              
+              async function ConfirmOrder() {
+                const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
+
+                let data = [openOrClose, $('form#Order').serialize()].join('&')
+
+                $.post(`/api/order/confirm`, data, function(data) {
+                  const refine = () => {
+                    return Object.values(data)[0]['Confirmations'];
+                  }
+                  alert(JSON.stringify(refine()));
+                },
+                  'json' // I expect a JSON response
+                )
+              }
+  
+              function CheckSymbol() {
+                fetch(`/api/order/checksymbol?symbol=${document.getElementById("Symbol").value}&option=${getRadioValue("Option")}`)
+                .then(response => response.json())
+                .then(res => {
+                  if (!res.success) {
+                    alert(`Error: ${res.errors.error.toString()}`)
+                    if (res.errors.error.toString() == 'Please Login') location.href = "/login"
+                  }
+                  res = res.data.items;
+                  // console.log(res);
+                  let expirationDates = Object.keys(res);
+                  expirationDates = expirationDates.filter((val) => val != "Description")
+                  expirationDates = expirationDates.sort((a, b) => Date.parse(a.split(" - ")[0]) - Date.parse(b.split(" - ")[0]))
+
+                  let allDates = '<option value="" disabled selected>Select Expiration Date</option>'
+                  expirationDates.map((date) => {
+                    if (date === "Description") return
+                    allDates += `<option value="${date}">${date}</option>`
+                  })
+                  $("#ExpirationDate").empty();
+                  $("#ExpirationDate").append(allDates);
+                  const description = res['Description']
+                  document.getElementById('Description').innerHTML = description;
+                  delete res.Description;
+                  localStorage.setItem('symbolData', JSON.stringify(res));
+                })
+              }
+  
+              function UpdateStrikePrices(expirationDate) {
+                const symbolData = JSON.parse(localStorage.getItem('symbolData'))
+                let strikePrices = Object.keys(symbolData[expirationDate]);
+                strikePrices = strikePrices.map((price) => Number(price)).sort()
+                
+                
+                let allPrices = '<option disabled selected>Select Strike Price</option>';
+                strikePrices.map((price) => {
+                  allPrices += `<option value="${price}">${price}</option>`
+                })
+                
+                $("#StrikePrice").empty();
+                $("#StrikePrice").append(allPrices);
+              }
+  
+              // function UpdateTradeAction(strikePrice) {
+              //   const symbolData = JSON.parse(localStorage.getItem('symbolData'))
+              //   const tradeActions = Object.keys(symbolData[$("#ExpirationDate").val()][strikePrice]);
+  
+              //   // let allTradeActions = '<option disabled selected>Select Trade Action</option>';
+              //   // tradeActions.map((action) => {
+              //   //   allTradeActions += `<option value="${action}">${action}</option>`
+              //   // })
+              //   let allTradeActions = `<option disabled selected>Select Trade Action</option>
+              //   <option value="Call">Call</option>
+              //   <option value="Put">Put</option>`
+                
+              //   $("#TradeAction").empty();
+              //   $("#TradeAction").append(allTradeActions);
+              // }
+  
+              function UpdateOptionName() {
+                const symbolData = JSON.parse(localStorage.getItem('symbolData'))
+                const optionName = symbolData[$("#ExpirationDate").val()][$("#StrikePrice").val()][getRadioValue("TradeAction")];
+                
+                document.getElementById("OptionName").value = optionName
+              }
+
+              $('input[type=radio][name=TradeAction]').change(function() {
+                const symbolData = JSON.parse(localStorage.getItem('symbolData')) 
+                const optionName = symbolData[$("#ExpirationDate").val()][$("#StrikePrice").val()][this.value];
+                
+                document.getElementById("OptionName").value = optionName
+              });
+
+              function CalculateMaxLoss() {
+                const quantity = document.getElementById("Quantity").value;
+                const limitPrice = document.getElementById("LimitPrice").value;
+                const maxLoss = Number(quantity) * Number(limitPrice) * 100
+                if (limitPrice && quantity) $("#MaxLoss").val('$'+ maxLoss.toString())
+                else $("#MaxLoss").val("")
+              }
+  
+              async function OrderDisplay(checked) {
+                if (checked) {
+                  document.getElementById("OrderBox").hidden = false;
+                  await ViewOrders()
+                } else {
+                  document.getElementById("OrderBox").hidden = true;
+                }
+              }
+              
+              function ActivationDisplay(checked) {
+                if (checked) {
+                  document.getElementById("ActivationRules").hidden = false;
+                  $('#ActivationRules *').prop("disabled", true);
+                  $('#ActivationRules *').removeAttr("disabled");
+                } else {
+                  document.getElementById("ActivationRules").hidden = true;
+                  $("#ActivationRules *").attr("disabled", "disabled")
+                }
+              }
+            </script>
+            <script>
+              $('input[type=radio][name=OrderType]').change(function() {
+                if (this.value == 'Limit') {
+                  document.getElementById('LimitPriceDiv').hidden = false;
+                  document.getElementById('LimitPrice').required = true;
+                  document.getElementById('MaxLossDiv').hidden = false;
+                }
+                else if (this.value == 'Market') {
+                  document.getElementById('LimitPriceDiv').hidden = true;
+                  document.getElementById('LimitPrice').required = false;
+                  document.getElementById('MaxLossDiv').hidden = true;
+                }
+              });
+              // function checkOrderType(value) {
+              //   if (value == 'Limit') {
+              //     document.getElementById('LimitPriceDiv').hidden = false;
+              //     document.getElementById('LimitPrice').required = true;
+              //     document.getElementById('MaxLossDiv').hidden = false;
+              //     // document.getElementById('StopPriceDiv').hidden = true;
+              //     // document.getElementById('StopPrice').required = false;
+              //   // } else if (value == "Stop Market") {
+              //   //   document.getElementById('LimitPriceDiv').hidden = true;
+              //   //   document.getElementById('LimitPrice').required = false;
+              //   //   document.getElementById('StopPriceDiv').hidden = false;
+              //   //   document.getElementById('StopPrice').required = true;
+              //   // } else if (value == "Stop Limit") {
+              //   //   document.getElementById('LimitPriceDiv').hidden = false;
+              //   //   document.getElementById('LimitPrice').required = true;
+              //   //   document.getElementById('StopPriceDiv').hidden = false;
+              //   //   document.getElementById('StopPrice').required = true;
+              //   } else if (value == "Market") {
+              //     document.getElementById('LimitPriceDiv').hidden = true;
+              //     document.getElementById('LimitPrice').required = false;
+              //     document.getElementById('MaxLossDiv').hidden = true;
+              //     // document.getElementById('StopPriceDiv').hidden = true;
+              //     // document.getElementById('StopPrice').required = false;
+              //   }
+              // }
+            </script>
+          </form>
+        </div>
       </div>
-      <p class="card-text"></p>
-      <div class="text-center">
-        <a id="updateBalance" onclick="UpdateBalances()" class="btn btn-success btn-dark-outline">Update Balances</a>
+    </div>
+    <div class="m-5"></div>
+  </div>
+  <!-- Right Cards -->
+  
+  <!-- Left Card -->
+  <div class="card bg-dark m-1" style="width: 67%; left: .5rem; top: .5rem">
+    <div class="row my-2 justify-content-center">
+      <div id="alert" class="col">
+        <div class="card-header">
+          <h6 class="my-0">Trade Manager - Positions</h6>
+        </div>
+        <div class="card-body container-fluid small">
+          <div id="TradeManager" class="row justify-content-start">
+            <strong class="m-0 text-primary">AccountID: <label class='text-light' id="AccountID" for="position-table">---------</label></strong>
+            <div>
+              <table id="PositionTable1" class="small table table-sm table-bordered table-dark mb-1">
+                <thead class="text-center">
+                  <tr>
+                    <th scope="col">Symbol</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Average Price</th>
+                    <th scope="col">Last Price</th>
+                    <th scope="col">Open P/L (Acct)</th>
+                    <th scope="col">Total Cost</th>
+                    <!-- <th scope="col">Account Balance</th> -->
+                  </tr>
+                </thead>
+                <tbody id="PositionTable1" class="align-middle">
+                
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   
   <!-- Left Card -->
 
-  <div class="card bg-dark position-absolute" style="width: 20rem; left: 1rem; top: 4.5rem">
-    <div class="card-header">
-      <h5 class="my-2">Active Orders</h5>
-    </div>
-    <table class="table table-dark table-hover text-center">
-      <thead>
-        <tr>
-          <th scope="col">Order ID</th>
-          <th scope="col">View Order</th>
-          <th scope="col">Cancel Order</th>
-        </tr>
-      </thead>
-      <tbody class="align-middle">
-        {% for o in order_ids %}
-          <tr id="{{ o }}">
-            <td>{{ o }}</td>
-            <td><a class="btn btn-outline-light" onclick="ViewOrder({{ o }})">View</a></td>
-            <td><a class="btn btn-outline-danger" onclick="CancelOrder({{ o }})">Cancel</a></td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-
-  <!--Body-->
-  <div class="container-fluid">
-    <div class="row my-3 justify-content-center">
-      <div id="alert" class="col-5 card bg-dark text-center">
-        <div class="card-header">
-          <h5 class="my-2">Create Order</h5>
+  <!-- Orders Card -->
+  <div id='OrderBox' class="card bg-dark m-1 mt-2" style="width: 67%; left: .5rem; top: .5rem">
+    <div class="row my-2 justify-content-center">
+      <div id="alert" class="col">
+        <div class="card-header row">
+          <div class="col">
+            <h6 class="my-0"> My Orders </h6>
+          </div>
+          <div class="col">
+            <span class="pull-right"><a class="btn btn-primary btn-sm col" onClick="ViewOrders()">Refresh</a></span>
+          </div>
         </div>
-        <form method="post" class="container-fluid py-3">
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="OrderType">Order Type</label>
-            <select class="col form-control" id="OrderType" required>
-              <option>Limit</option>
-              <option>Stop Market</option>
-              <option>Market</option>
-              <option>Stop Limit</option>
-            </select>
-          </div>
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="Quantity">Quantity</label>
-            <input type="number" class="col form-control" id="Quantity" placeholder="Quantity of Order" step=".01" required>
-          </div>
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="Symbol">Symbol</label>
-            <input type="text" class="col form-control" id="Symbol" placeholder="Symbol" required>
-          </div>
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="TradeAction">Order Type</label>
-            <select class="col form-control" id="TradeAction" required>
-              <option value="Call">Call</option>
-              <option value="Put">Put</option>
-            </select>
-          </div>
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="StopPrice">Stop Price (optional)</label>
-            <input type="number" class="col form-control" id="StopPrice" placeholder="Stop price for Order" step=".01">
-          </div>
-          <div class="form-group row py-2">
-            <label class="col-3 align-self-center" for="TradeAction">Order Type</label>
-            <select class="col form-control" id="TradeAction" required>
-              <option value="GTC">GTC - Good till canceled</option>
-              <option value="DAY">DAY - Day, valid until the end of the regular trading session.</option>
-              <option value="DYP">DYP - Day Plus; valid until the end of the extended trading session.</option>
-              <option value="GCP">GCP - Good till canceled plus</option>
-              <option value="GTD">GTD - Good through date</option>
-              <option value="GDP">GDP - Good through date plus</option>
-              <option value="OPG">OPG - At the opening; only valid for listed stocks at the opening session Price.</option>
-              <option value="CLO">CLO - On Close; orders that target the closing session of an exchange.</option>
-              <option value="IOC">IOC - Immediate or Cancel; filled immediately or canceled, partial fills are accepted.</option>
-              <option value="FOK">FOK - Fill or Kill; orders are filled entirely or canceled, partial fills are not accepted.</option>
-              <option value="1">1 - 1 minute; expires after the 1 minute.</option>
-              <option value="3">3 - 3 minutes; expires after the 3 minutes.</option>
-              <option value="5">5 - 5 minutes; expires after the 5 minutes.</option>
-            </select>
-          </div>
-          <div class="row my-2 p-2 justify-content-center gx-3">
-            <div class="col text-end">
-              <button type="submit" value="Call" class="btn btn-primary px-5">Call</button>
-            </div>
-            <div class="col text-start">
-              <button type="submit" value="Put" class="btn btn-danger px-5">Put</button>
+        <div class="card-body container small">
+          <div id="OrderDetailsCard" class="row justify-content-start">
+            <!-- <strong class="m-0 text-primary">Xgen OrderID: <label class='text-light' id="XgenOrderID" for="position-table">---------</label></strong> -->
+            <div>
+              <table id="OrdersTable1" class="small table table-sm table-bordered table-dark mb-1">
+                <thead class="text-center">
+                  <tr>
+                    <th scope="col">Xgen OrderID</th>
+                    <th scope="col">Participants</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Description</th>
+                    <th scope="col">Cancel</th>
+                  </tr>
+                </thead>
+                <tbody id="OrderDetails" class="align-middle">
+                
+                </tbody>
+              </table>
             </div>
           </div>
-        </form>
-        
+        </div>
       </div>
     </div>
-    
   </div>
+  
+  <!-- Orders Card -->
 
-  <footer class="text-center">
+
+  <!--Footer-->
+  <footer class="small text-center pt-5 mt-5">
     <!-- Copyright -->
-    <div class="footer-copyright py-3 text-muted pt-5">© 2020 Copyright:
-      <a href="">FocusXgen | Powered by David Gabriel</a>
+    <div class="small footer-copyright py-3 text-muted pt-5 mt-5">© 2020 Copyright:
+      <a href="mailto:gabedave01@gmail.com">FocusXgen | Powered by DG</a>
     </div>
     <!-- Copyright -->
   </footer>
+  <!--Footer-->
 
   <!-- Bottom Left Card -->
-
   <div class="card bg-dark position-fixed" style="width: 10rem; left: 1%; bottom: 0rem;">
-    <a class="btn btn-primary" href="mailto:gabedave01@gmail.com">Contact Support</a>
+    <a class="btn btn-primary btn-sm" href="mailto:gabedave01@gmail.com">Contact Support</a>
   </div>
+  <!-- Bottom Left Card -->
 
   <!-- Bottom Right Card -->
-
-  <div class="bg-light position-fixed rounded" style="right: 1%; bottom: 0rem;">
-    <p class="text-center h6 p-1 mx-3 my-1 text-dark"> Time : <a><span class="time"></span></a></p>
+  <div class="card bg-light position-fixed" style="right: 1%; bottom: 0rem;">
+    <small class="text-center btn btn-primary btn-sm px-3">Time : <a><span class="time"></span></a></small>
   </div>
+  <!-- Bottom Right Card -->
 
-  <script>
+  <!-- Order Box -->
+  <div id="ModifyOrderBox" class="position-fixed" style="width: 30rem; right: 50%; margin-right: -15rem; bottom: .3rem" hidden>
+    <div class="row justify-content-center">
+      <div class="card bg-dark col align-self-center">
+        <div class="card-header">
+          <h6 class="card-title text-center">Order Details</h5>
+        </div>
+        <div id='ModifyOrderBoxDetails' class="card-body small">
+          <h6 class="card-title"></h6>
+          <div class="card-text"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Order Box -->
+
+  <script id="intervals">
     $(document).ready(function() {
-
       setInterval( function() {
       var datetime = new Date()
       var time = datetime.toTimeString().split(" ").filter((part)=>!part.startsWith('GMT')).join(" ");
       $(".time").html(time);
       }, 1000);
-    });
-  </script>
-  <script>
-    async function ViewOrder(orderId) {
-      await fetch(`/api/vieworder/${orderId}`).then((res) => res.json()).then(async (order) => {
-      let orderData = ""
-      for (const par in order) {
-        if (par === 'OrderID') continue;
-        orderData += `${par} : ${order[par]}<br>`
-      }
-      document.getElementById("alert").insertAdjacentHTML('afterend', `<div class="row justify-content-center"><div id="viewalert${orderId}"  class="col-5 alert alert-success alert-dismissible fade show" role="alert"> \
-      <strong>Order ${order['OrderID']}</strong><br>${orderData}\
-      <button type="button" class="close rounded" data-dismiss="alert" aria-label="Close"> \
-        <span aria-hidden="true">&times;</span></button></div></div>`)
-      $('alert').alert()
-      })
-    }
-    async function CancelOrder(orderId) {
-      await fetch(`/api/cancelorder/${orderId}`).then((res) => res.json()).then(async (res) => {
-      document.getElementById("alert").insertAdjacentHTML('afterend', `<div class="row justify-content-center"><div id="cancelalert${orderId}" class="col-5 card alert alert-danger alert-dismissible fade show m-1" role="alert"> \
-      <strong>${res['Message']}</strong></div></div>`)
-      if (res["Message"] === "Order successfully canceled.") {
-        setTimeout(() => {
-          $(`#${orderId}`).remove();
-          $(`#cancelalert${orderId}`).alert('close')
-        }
-          , 2000
-        )
-      }
-      })
-    }
-    async function UpdateBalances(orderId) {
-      await fetch(`/api/updatebalances`).then((res) => res.json()).then(async (res) => {
-        document.getElementById("balances").innerHTML = ""
-        res.data.forEach((obj) => {
-          let balanceData = `<div class="row">
-              <h6 class="card-text col">${obj.AccountID}</h5>
-              <h6 class="card-link col text-success">$${obj.CashBalance}</h5>
-            </div>`
-          document.getElementById("balances").innerHTML += balanceData
+      setInterval(async function() {
+        fetch("/api/positions")
+        .then(res => res.json())
+        .then(async res => {
+          await UpdatePositions(res.data)
         })
         
-        if (res["Message"] === "Order successfully canceled.") {
-          setTimeout(() => {
-            $(`#${orderId}`).remove();
-            $(`#cancelalert${orderId}`).alert('close')
-          }
-            , 2000
-          )
+      }, 5000);
+    });
+  </script>
+
+  <script>
+    async function Logout(){
+      await fetch('/logout')
+      .then(response => response.json())
+      .then(res => {
+        if (res.success) location.href = '/login'
+        else {
+          alert(res.errors.error)
         }
-        })
+      })
+    }
+  </script>
+
+  <script>
+    const editCancel = (status) => status === `"Filled"` ? `<div class='btn btn-primary'></div>` : 
+    "<div class='btn btn-primary'><a class='link-light' onclick='CancelOrder(${orderCategory})'>Cancel</a></div>"
+    async function ViewOrders() {
+      await fetch(`/api/order/store`).then((res) => res.json()).then(async (order) => {
+        if (!order.success) alert(order.errors.error)
+        $('#OrderDetails').empty();
+        console.log(order)
+        order = order.data.items
+        for (const [orderCategory, clientOrders] of Object.entries(order)) {
+          // console.log(clientOrders)
+          if ($.isEmptyObject(clientOrders)) continue
+          if (Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === undefined) continue
+          console.log(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])
+          const data = `<tr>
+                          <td>${orderCategory}</td>
+                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'].map((val) => val['OrderID']))}</td>
+                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])}</td>
+                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['Message'])}</td>
+                          <td>${editCancel(JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription']))}</td>
+                        </tr>`
+          $('#OrderDetails').append(data)
+        }
+      })
     }
     
+    async function CancelOrder(orderId) {
+      await fetch(`/api/cancelorder/${orderId}`)
+      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.success) {
+          alert(res.errors.detail)
+          return;
+        }
+        data = res.data.items
+        alert(data.values()[0]['Message'])
+      })
+    }
+
+    async function ChangeTradingMode() {
+      const mode = document.getElementById('tradingMode').innerHTML;
+      // console.log(mode)
+      if (mode === "SIM") {
+        await fetch('/api/trader/real')
+        .then(response => response.json())
+        .then(res => {
+          if (res.success) window.location.reload()
+          else {alert(`An Error Occured: ${res.errors.error}`)}
+        })
+      } else if (mode === "LIVE") {
+        await fetch('/api/trader/paper')
+        .then(response => response.json())
+        .then(res => {
+          if (res.success) window.location.reload()
+          else {alert(`An Error Occured: ${res.errors.error}`)}
+        })
+      }
+    }
+
+    function PosNegCheck(variable) {
+      return variable >= 0 ? "class = 'text-success'" : "class = 'text-danger'"
+    }
+
+    async function UpdatePositions(res) {
+      if ($.isEmptyObject(res)) return
+      
+      let allPositionsArr = []
+
+      for (const [clientId, position] of Object.entries(res)){
+        const allPos_ = position.map((pos) => `
+                <tbody id="PositionTable" class="align-middle">
+                  <tr>
+                    <td>${pos['Symbol']}</td>
+                    <td>${pos['Quantity']}</td>
+                    <td>${Number(pos['AveragePrice']).toFixed(2)}</td>
+                    <td>${pos['Last']}</td>
+                    <td ${PosNegCheck(pos['UnrealizedProfitLoss'])}">${pos['UnrealizedProfitLoss']}</td>
+                    <td>${Number(pos['TotalCost']).toFixed(2)}</td>
+                  </tr>
+                </tbody>`).join(' ')
+        
+        let positionData = `<div class="small container">
+          <div class="row">
+            <div class="col-md-4">
+              <strong class="m-0 text-primary">AccountID: <label class="text-light" for="PositionTable">${position[0]['AccountID']}</label></strong>
+            </div>
+            <div class="col-md-8">
+              <span class="pull-right text-light">
+                <strong class="px-2">Equity: <label ${PosNegCheck(position[0]['Equity'])}>$${position[0]['Equity']}</label></strong>
+                <strong class="px-2">Buying Power: <label ${PosNegCheck(position[0]['BuyingPower'])}>$${position[0]['BuyingPower']}</label></strong>
+                <strong class="px-2">Cash Balance: <label ${PosNegCheck(position[0]['CashBalance'])}>$${position[0]['CashBalance']}</label></strong>
+              </span>
+            </div>
+          </div>
+            <div class="table-responsive">
+              <table class="table table-bordered table-sm table-dark mb-1">
+                <thead class="">
+                  <tr>
+                    <th scope="col">Symbol</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Average Price</th>
+                    <th scope="col">Last Price</th>
+                    <th scope="col">Open P/L (Acct)</th>
+                    <th scope="col">Total Cost</th>
+                  </tr>
+                </thead>`
+                + allPos_ +
+                `
+              </table>
+            </div>
+          </div>`
+        allPositionsArr.push(positionData)
+      } 
+      document.getElementById("TradeManager").innerHTML = allPositionsArr.join("\n")
+    }
+
   </script>
+
 </body>
 </html>
  
