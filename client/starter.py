@@ -30,6 +30,7 @@ class Client(object):
         self.configure_profiles(True)
         self.paper_trading
         self.client__ = []
+        self.positions = None
 
         dir_path = os.getcwd()
         filename = 'store.json'
@@ -38,6 +39,7 @@ class Client(object):
         if os.path.isfile(file_path):
             with open(file=file_path) as f:
                 self.store = json.load(fp=f)
+                # pprint(self.store)
         else: self.store = {}
 
     def configure_profiles(self, paper_trading: bool = True) -> None:
@@ -55,26 +57,64 @@ class Client(object):
             self.client[profile['client_id']] = _profile
 
     def save_login(self, client_id: str) -> None:
-        self.client__.append(client_id)
+        if client_id not in self.client__:
+            self.client__.append(client_id)
 
     async def profile_login(self, client_id: str) -> Union[str,bool]:
         url = await self.client[client_id].login()
         return url
 
-    def profile_complete_login(self, client_id: str, full_redirect_uri: str) -> bool:
+    async def profile_complete_login(self, client_id: str, full_redirect_uri: str) -> bool:
         # print(client_id, full_redirect_uri)
-        return self.client[client_id].complete_login(full_redirect_uri)
+        res = await self.client[client_id].complete_login(full_redirect_uri)
+        return res
 
-    async def logout(self) -> None:
+    async def logout(self) -> bool:
         try:
-            result = await asyncio.gather(*[x.logout(temporary = False) for x in self.client.values])
-            if result: return True
+            result = await asyncio.gather(*[self.client[x].logout(False) for x in self.client__])
+            if result: 
+                self.client__.clear()
+                return True
             else: raise Exception('Logout Failed')
         except:
             return False
 
+    async def delete(self, client_id) -> bool:
+        dir_path = os.getcwd()
+        filename = 'config.json'
+        file_path = os.path.join(dir_path, 'config', filename)
+
+        if os.path.isfile(file_path):
+            with open(file=file_path) as f:
+                config = json.load(fp=f)
+        config = list(filter(lambda profile: profile['client_id'] != client_id, config))
+
+        with open(file_path, 'w+') as f:
+            json.dump(config, f, indent=4)
+        
+        return True
+
+    async def add(self, data) -> bool:
+        dir_path = os.getcwd()
+        filename = 'config.json'
+        file_path = os.path.join(dir_path, 'config', filename)
+
+        if os.path.isfile(file_path):
+            with open(file=file_path) as f:
+                config = json.load(fp=f)
+
+        if len(list(filter(lambda x: x['client_id'] == data['client_id'], config))) == 0:
+            config.append(data)
+
+            with open(file_path, 'w+') as f:
+                json.dump(config, f, indent=4)
+
+                return True
+        return False
+
     def profile_logout(self, client_id: str) -> None:
         try:
+            if client_id in self.client__: self.client__.remove(client_id)
             self.client[client_id].logout(temporary=True)
             return True
         except:
@@ -89,8 +129,10 @@ class Client(object):
             Balances: dict = profile.account_balances()['Balances'][0].items() #assumption of one account in each profile
             new_balances[client_id] = {key: Balances[key] for key in ['AccountID','CashBalance']}
 
-    def change_trading_mode(self, paper_trading: bool = True):
+    async def change_trading_mode(self, paper_trading: bool = True):
         self.configure_profiles(paper_trading)
+        await asyncio.gather(*[self.profile_login(x) for x in self.client.keys()])
+
         return True
 
     # def get_profile_position(self, client_id: str) -> dict:
@@ -106,14 +148,14 @@ class Client(object):
     #     return p_
 
     async def get_all_positions(self) -> dict:
-        all_positions = {}
-        for client_id in self.client__:
+        async def pos(client_id):
             profile = self.client[client_id]
             res = await asyncio.gather(*[profile.account_positions(), profile.account_balances()])
             Positions: list = res[0]['Positions']
             Balances: list = res[1]['Balances']
 
-            all_positions[client_id] = []
+            # all_positions[client_id] = []
+            results = []
 
             # Append Account Balance to the Position dict
             for p_ in Positions:
@@ -122,11 +164,30 @@ class Client(object):
                         p_['CashBalance'] = b_['CashBalance']
                         p_['BuyingPower'] = b_['BuyingPower']
                         p_['Equity'] = b_['Equity']
-                        all_positions[client_id].append(p_)
-        # pprint(all_positions)
+                        results.append(p_)  # all_positions[client_id].append(p_)
+            
+            if results == []: # all_positions[client_id] == []:
+                new = {"AccountID": list(filter(lambda x: x[1] == 'Margin', profile.config["AccountID"]))[0][0]}
+                for b_ in Balances:
+                    if b_['AccountID'] == new['AccountID']:
+                        new['CashBalance'] = b_['CashBalance']
+                        new['BuyingPower'] = b_['BuyingPower']
+                        new['Equity'] = b_['Equity']
+                results.append(new)  # all_positions[client_id].append(new)
+
+            return (profile.config['client_id'], results)
+
+        # print(all_positions)
+
+        gather = await asyncio.gather(*[pos(x) for x in self.client__])
+        all_positions = {x: y for x, y in gather}
+
         self.positions = all_positions
+
         return all_positions
-    
+
+        return all_positions
+
     # async def get_all_positions_stream(self):
     #     while True:
     #         res = await self.get_all_positions()
@@ -223,6 +284,14 @@ class Client(object):
 
         return self.store.get(order_id)
 
+    async def store_store(self):
+        dir_path = os.getcwd()
+        filename = 'store.json'
+        file_path = os.path.join(dir_path, 'client/orders', filename)
+
+        with open(file_path, 'w+') as f:
+            json.dump(self.store, f, indent=4)
+
     async def get_all_orders(self):
         async def get(x):
             profile = self.client[x]
@@ -245,39 +314,81 @@ class Client(object):
         # if self.store == {}: return self.store
         # for order_id in self.store:
         #     if not self.store[order_id]: del self.store[order_id]
+        sorted = {}
 
-        for order_id in self.store:
-            if not self.store[order_id]: 
-                print("nothing in store")
-                continue
+        for order_id in deepcopy(list(self.store.keys())):
+
             for client_id in self.client__:
-                if orders_[client_id] == []: return self.store
-                for detail in orders_[client_id]:
-                    if self.store[order_id][client_id]['Orders'][0]['OrderID'] == detail['OrderID']:
-                        self.store[order_id][client_id]['Orders'][0]['StatusDescription'] = detail['StatusDescription']
-                    else:
-                        del self.store[order_id]
-                        continue
 
-        return self.store
+                if orders_[client_id] == []: continue
+
+                for detail in orders_[client_id]:
+
+                    # if order_id not in self.store.keys(): continue
+
+                    # print(client_id, self.store[order_id][client_id])
+
+                    if client_id not in self.store[order_id]: continue
+
+                    if self.store[order_id][client_id]['Orders'][0]['OrderID'] == detail['OrderID']:
+                        
+                        sorted[order_id] = sorted.get(order_id, {})
+                        sorted[order_id][client_id] = sorted[order_id].get(client_id, self.store[order_id][client_id])
+
+                        sorted[order_id][client_id]['Orders'][0]['AccountID'] = detail['AccountID']
+                        sorted[order_id][client_id]['Orders'][0]['StatusDescription'] = detail['StatusDescription']
+                        sorted[order_id][client_id]['Orders'][0]['OrderType'] = detail['OrderType']
+                        sorted[order_id][client_id]['Orders'][0]['Legs'] = detail['Legs']
+                        if detail["OrderType"] == "Limit":
+                            sorted[order_id][client_id]['Orders'][0]['LimitPrice'] = detail['PriceUsedForBuyingPower']
+
+                    # else:
+                        
+                    #     del self.store[order_id]
+                    #     continue
+        
+        # pprint("sorted")
+        # pprint(sorted)
+        return sorted
         
     async def cancel_order(self, order_id):
+        success = True
         async def cancel(x):
             profile = self.client[x]
     
             res = await profile.cancel_order(self.store[order_id][x]['Orders'][0]['OrderID'])
             # pprint(res)
 
-            # if res['Errors'] != []:
-            #     raise Exception(res["Errors"])
+            if "Errors" in res:
+                success = False
 
-            if res['Message'] == "Order successfully canceled.":
-                del self.store[order_id][x]
+            # if res['Message'] == "Order successfully canceled.":
+            #     del self.store[order_id]
             
             return x, res
 
         gather = await asyncio.gather(*[cancel(x) for x in self.client__])
         responses = {x: y for x, y in gather}
+
+        if success:
+            del self.store[order_id]
+
+        return responses
+
+    async def modify_order(self, order_id: str, new_order: dict):
+        async def modify(x):
+            profile = self.client[x]
+    
+            res = await profile.replace_order(self.store[order_id][x]['Orders'][0]['OrderID'], new_order)
+
+            if "Error" not in res:
+                self.store[order_id][x]['Orders'][0]['Message'] = self.store[order_id][x]['Orders'][0]['Message'].split(new_order['Symbol'])[0][:-2] + new_order['Quantity'] + ' ' + new_order['Symbol'] + ' @ ' + new_order.get('LimitPrice', '') + ' ' + new_order['OrderType']
+            
+            return x, res
+
+        gather = await asyncio.gather(*[modify(x) for x in self.client__])
+        responses = {x: y for x, y in gather}
+        # del self.store[order_id]
         return responses
         
 
@@ -356,12 +467,11 @@ def _prepare_logging():
 
 async def main():
     config = settings.load_config()
-    pprint(config)
-    client = Client(config)
-    pprint(client.client)
-    client_id = list(client.client.keys())[0]
-    await client.profile_login(client_id)
-    client.save_login(client_id)
+    # client = Client(config)
+    # pprint(client.client)
+    # client_id = list(client.client.keys())[0]
+    # await client.profile_login(client_id)
+    # client.save_login(client_id)
     # pprint(client.profile_complete_login("SM63OK896BoMlmMWy6cQpSmuJkAYlXg6","127.0.0.1:3000/?code=232425232342"))
     # pprint(client.profile_login(config[0]['client_id']))
     # print(client.change_trading_mode())
@@ -371,8 +481,8 @@ async def main():
     # pprint(await client.get_all_positions())
     # pprint(client.get_symbol_info('AAPL'))
     # pprint(await client.execute_order({'Symbol': 'AAPL', 'Quantity': 67, 'OrderType': 'Market', 'TradeAction': 'BUY', 'TimeInForce': {'Duration': 'DAY'}, 'Route': 'Intelligent', 'AccountID': 'SIM1428415X'}))
-    pprint(await client.sort_orders())
-    pprint(await client.cancel_order("order 1639501743.473545"))
+    # pprint(await client.sort_orders())
+    # pprint(await client.cancel_order("order 1639501743.473545"))
 
 if __name__ == '__main__':
     asyncio.run(main())

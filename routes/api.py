@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Response, Request, status, Form, BackgroundTasks
+from pprint import pprint
+from fastapi import APIRouter, Response, Request, background, status, Form, BackgroundTasks
 from typing import Optional, Union
 from datetime import datetime
 from http import HTTPStatus
 
 import asyncio
 import concurrent
+import multiprocessing
 import json
 import os
 import sys
@@ -12,12 +14,6 @@ import time
 
 from config import settings
 from client.starter import Client
-
-config = settings.load_config()
-client = Client(config)
-loop = asyncio.new_event_loop() 
-
-router = APIRouter()
 
 
 class Positions(object):
@@ -29,12 +25,26 @@ class Positions(object):
         global shutdown
         shutdown = True
 
-positions = Positions()
+class Base(): 
+
+    def reset(self):
+        self.config = settings.load_config()
+        self.client = Client(self.config)
+        self.positions = Positions()
+
+base = Base()
+base.reset()
+restart = False
+
+# client = base.client
+# positions = base.positions
+
+router = APIRouter()
 
 @router.get("/api/accounts")
 async def accounts():
     all_profiles = []
-    for profile in client.client.values():
+    for profile in base.client.client.values():
         all_profiles.append({
             "username" : profile.config["username"],
             "client_id" : profile.config["client_id"],
@@ -45,15 +55,18 @@ async def accounts():
 
 @router.get("/api/start")
 async def start():
-    for client_id, profile in client.client.items():
+    allow_login = False
+    for client_id, profile in base.client.client.items():
         if profile.state['logged_in'] and profile.authstate:
-            client.save_login(client_id)
-            return {
-                "success": True,
-                "data": {
-                    "redirect": "/home"
-                }
-            }
+            base.client.save_login(client_id)
+            allow_login = True
+
+    if allow_login: return {
+        "success": True,
+        "data": {
+            "redirect": "/home"
+        }
+    }
     return {
         "success": False,
         "errors": {
@@ -64,22 +77,45 @@ async def start():
 
 @router.get("/api/positions")
 async def posit():
-    file_path = os.path.join(os.getcwd(), 'client/positions/positions.json')
+    # file_path = os.path.join(os.getcwd(), 'client/positions/positions.json')
     # print(file_path)
-    if os.path.isfile(file_path):
-        with open(file=file_path) as f:
-            pos = json.load(fp=f)
-            return {
-                'success': True,
-                "data": pos
-            }
-    else: return{
-        "success": False,
-        "errors": {
-            "error": "Internal error"
+    global restart
+    if restart:
+        backgroundtask = BackgroundTasks()
+        await stream(backgroundtask)
+        restart = False
+    
+    if base.positions.stream:
+        return {
+            "success": True,
+            "data": base.client.positions
         }
-    }
-
+    else:
+        return {
+            "success": False,
+            "errors": {
+                "error": "Internal error"
+            }
+        }
+    
+# @router.get("/api/positions/close")
+# async def close_positions():
+#     response = client
+#     # print(file_path)
+    
+#     if response:
+#         return {
+#             "success": True,
+#             "data": client.positions
+#         }
+#     else:
+#         return {
+#             "success": False,
+#             "errors": {
+#                 "error": "Internal error"
+#             }
+#         }
+    
 # Positions Process
 def get_all_positions_mod(executor):
     while True:
@@ -87,43 +123,58 @@ def get_all_positions_mod(executor):
         
         global shutdown
         # print("shutdown", shutdown)
+        global start
+        start_ = time.time()
         if shutdown:
-            executor.shutdown()
-            positions.stream = False
+            executor.close()
+            base.positions.stream = False
             shutdown = False
             sys.exit()
         else:
-            executor.submit(asyncio.run(client.get_all_positions()))
-        posit = client.positions
-        time.sleep(2)
+            try:
+                executor.apply_async(asyncio.run(base.client.get_all_positions()))
+                
+            except Exception as e:
+                print(e)
+                shutdown = True
+                global restart
+                restart = True
         
-        dir_path = os.getcwd()
-        filename = 'positions.json'
-        file_path = os.path.join(dir_path, 'client/positions', filename)
+        posit = base.client.positions
+        end = time.time() - start_
+        if end < 1.2:
+            time.sleep(1.2 - end)
+        
+        # dir_path = os.getcwd()
+        # filename = 'positions.json'
+        # file_path = os.path.join(dir_path, 'client/positions', filename)
 
-        with open(file_path, 'w+') as f:
-            json.dump(posit, f, indent=4)
+        # with open(file_path, 'w+') as f:
+        #     json.dump(posit, f, indent=4)
 
 def positions_task():
     # loop = asyncio.get_event_loop()
     # asyncio.set_event_loop(loop)
-    with concurrent.futures.ProcessPoolExecutor(max_workers=1) as p:
+    with multiprocessing.Pool(processes=20) as p:
+        # loop = asyncio.new_event_loop()
         global shutdown
         shutdown = False
-        positions.pool = p
-        loop.run_in_executor(positions.pool, get_all_positions_mod(positions.pool))
+        base.positions.pool = p
+        
+        get_all_positions_mod(base.positions.pool)
+        # loop.run_in_executor(base.positions.pool, get_all_positions_mod(base.positions.pool))
     
 
 @router.get("/api/positions/stream", status_code=HTTPStatus.ACCEPTED)
-async def func(background_task: BackgroundTasks):
+async def stream(background_task: BackgroundTasks):
     # return StreamingResponse(client.get_all_positions_stream())
     global shutdown
-    if positions.stream:
+    if base.positions.stream:
         print("..stream already running")
     else:
         shutdown = False
         background_task.add_task(positions_task)
-        positions.stream = True
+        base.positions.stream = True
     
     return {
         "success": True
@@ -133,13 +184,8 @@ async def func(background_task: BackgroundTasks):
 @router.get("/api/trader/{mode}")
 async def trader_mode(response: Response, mode: str):
     if mode == "paper":
-        if client.change_trading_mode(True):
-            return {
-                "success": True,
-                "data": {
-                    "msg": "Trading Mode changed to paper"
-                }
-            }
+        if await base.client.change_trading_mode(True):
+            return await start()
         else: return {
             "success": False,
             "errors": {
@@ -147,13 +193,8 @@ async def trader_mode(response: Response, mode: str):
             }
         }
     elif mode == "real":
-        if client.change_trading_mode(False):
-            return {
-                "success": True,
-                "data": {
-                    "msg": "Trading Mode changed to real"
-                }
-            }
+        if await base.client.change_trading_mode(False):
+            return await start()
         else: return {
             "success": False,
             "errors": {
@@ -166,7 +207,7 @@ async def trader_mode(response: Response, mode: str):
 @router.get("/api/order/checksymbol")
 async def trader_mode(symbol: str, option: str):
     try:
-        strike_price_dict = await client.get_symbol_info(symbol, option)
+        strike_price_dict = await base.client.get_symbol_info(symbol, option)
         # print(strike_price_dict)
     
         if len(strike_price_dict) != 0:
@@ -197,7 +238,7 @@ async def trader_mode(symbol: str, option: str):
 @router.get("/api/order/store")
 async def get_orders():
     try:
-        order_store = await client.sort_orders()
+        order_store = await base.client.sort_orders()
         return {
             "success": True,
             "data": {
@@ -205,7 +246,7 @@ async def get_orders():
                 "items": order_store
             }
         }
-    except Exception as e: 
+    except Exception as e:
         # raise Exception(e)
         print(e)
         return {
@@ -222,9 +263,9 @@ async def create_order(
     kind: str,
     OpenOrClose: str = Form(...),
     OrderType: str = Form(...), 
-    Symbol: str = Form(...),
-    ExpirationDate: str = Form(...),
-    StrikePrice: float = Form(...),
+    Symbol: Optional[str] = Form(None),
+    ExpirationDate: Optional[str] = Form(None),
+    StrikePrice: Optional[float] = Form(None),
     TradeAction: str = Form(...),
     OptionName: str = Form(...),
     Quantity: int = Form(...),
@@ -246,17 +287,22 @@ async def create_order(
     Operator5: Optional[str] = Form(None),
     Predicate5: Optional[str] = Form(None),
     Price5: Optional[float] = Form(None),
+    Mode: Optional[str] = Form(None),
+    OrderId: Optional[str] = Form(None),
+    TrailingStop: Optional[str] = Form(None),
+    TrailingValue: Optional[float] = Form(None)
     ):
     try:
+        if Symbol: Symbol = Symbol.strip()
         TimeInForce = {"Duration": "DAY"}
         if ExpirationDate:
             TimeInForce["Expiration"] = datetime.strptime(ExpirationDate.split(' - ')[0], '%Y-%m-%d %H:%M:%S').isoformat('T') + 'Z'
         
-        if TradeAction == "Call":
-            TradeAction_ = "BUYTOOPEN" if OpenOrClose == 'Open' else "SELLTOCLOSE"
-        elif TradeAction == "Put":
-            TradeAction_ = "SELLTOOPEN" if OpenOrClose == 'Open' else "BUYTOCLOSE"
-        else: raise ValueError("Invalid TradeAction")
+        if OpenOrClose == "Open":
+            TradeAction_ = "BUYTOOPEN"
+        elif OpenOrClose == "Close":
+            TradeAction_ = "SELLTOCLOSE"
+        else: raise ValueError("Invalid OpenOrClose")
 
         rules = [ Predicate2, Predicate3, Predicate4, Predicate5, \
                     Price2, Price3, Price4, Price5, Operator1, Operator2, Operator3, Operator4, Operator5]
@@ -285,7 +331,7 @@ async def create_order(
         assembled = assemble_activation_rules()
         for x in assembled:
             assembled[x]['RuleType'] = "Price"
-            assembled[x]["Symbol"] = Symbol.strip()
+            assembled[x]["Symbol"] = Symbol if Symbol else OptionName.split(" ")[0]
             assembled[x]["TriggerKey"] = "STT"
         ActivationRules = [y for x,y in assembled.items()]
         # print(ActivationRules)
@@ -294,7 +340,7 @@ async def create_order(
             "OrderType": OrderType,
             "TimeInForce": TimeInForce,
             "Quantity": str(Quantity),
-            "Symbol": OptionName,    # Symbol.strip(),
+            "Symbol": OptionName,
             "StrikePrice": str(StrikePrice),
             "TradeAction": TradeAction_,
             "Route": "Intelligent"
@@ -305,18 +351,41 @@ async def create_order(
 
         if ActivationRules != []:
             order['AdvancedOptions'] = {"MarketActivationRules" : ActivationRules}
+
+        if TrailingStop:
+            if TrailingStop == "Amount":
+                order['AdvancedOptions'] = {
+                    "TrailingStop" : {
+                        "Amount": str(TrailingValue)
+                    }
+                }
+            elif TrailingStop == "Percent":
+                order['AdvancedOptions'] = {
+                    "TrailingStop" : {
+                        "Amount": str(TrailingValue)
+                    }
+                }
+
+        pprint(order)
         
         if kind == 'confirm':
-            resp = await client.confirm_order(order)
+            resp = await base.client.confirm_order(order)
         elif kind == 'execute':
-            resp = await client.execute_order(order)
-            await client.store_orders(resp)
+            if Mode == "ModifyOrder":
+                OrderId = OrderId.strip()
+                print("modify")
+                resp = await base.client.modify_order(OrderId, {x: y for x, y in order.items() if x in ["Symbol", "Quantity", "OrderType", "LimitPrice", "AdvancedOptions"]})
+                await base.client.store_store()
+            else:
+                resp = await base.client.execute_order(order)
+                await base.client.store_orders(resp)
         else: raise Exception("Wrong Order Type")
         
         return resp
-    
+
     except Exception as e:
-        print(e)
+        #print(e)
+        raise Exception(e)
         response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         return {
             'errors': {
@@ -326,16 +395,17 @@ async def create_order(
         }
     
 
-
-
 @router.get("/api/cancelorder/{orderId}")
-async def cancel_order(orderId):
+async def cancel_order(orderId: str):
     try:
-        cancelled = await client.cancel_order(orderId)
+        success = True
+        cancelled = await base.client.cancel_order(orderId)
 
         for client_id in cancelled:
             if "Error" in cancelled[client_id]:
-                raise Exception(cancelled[client_id]['Message'])
+                success = False
+        if success == False: raise Exception(cancelled[client_id]['Message'])
+        await base.client.store_store()
         return {
             "success": True,
             "data": {
@@ -344,7 +414,8 @@ async def cancel_order(orderId):
             }
         }
     except Exception as e:
-        print(e)
+        raise Exception(e)
+        # print(e)
         return {
             "successs": False,
             "errors":{
@@ -358,8 +429,8 @@ async def cancel_order(orderId):
 #     return {"OrderID": "286234131", "OpenedDateTime": "2021-02-24T15:47:45Z", "OrderType": "Market"}
 
 def client_() -> Client:
-    return client
+    return base.client
 
 def pool_():
-    return positions
+    return base.positions
     

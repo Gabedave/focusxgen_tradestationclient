@@ -78,35 +78,6 @@
         </div>
       </div>
     </div>
-    <script>
-      window.addEventListener('load', () => {
-        document.getElementById('tradingMode').innerHTML == "SIM" ? 
-        setSIM() : setLIVE()
-
-        function setSIM() {
-          document.getElementById('tradingModeButton').innerHTML = "LIVE";
-          document.getElementById('tradingMode').className = "strong btn btn-lg btn-danger btn-light-outline p-2 px-5 m-0";
-        }
-        function setLIVE() {
-          document.getElementById('tradingModeButton').innerHTML = "SIM";
-          document.getElementById('tradingMode').className = "strong btn btn-lg btn-success btn-light-outline p-2 px-5 m-0";
-        }
-
-        fetch("/api/start")
-        .then(response => response.json())
-        .then(res => {
-          if (!res.success) {
-            alert(res.errors.detail)
-            location.href = "/login"
-          }
-        })
-
-        fetch('/api/positions/stream')
-
-        ViewOrders()
-      })
-
-    </script>
 
     <!-- Create Order form -->
     <div class="card bg-dark my-2">
@@ -133,41 +104,30 @@
               </div>
             </div>
           </div>
-          <!-- <script>
-            document.getElementById('OpenOrClose').addEventListener('change', function (e) {
-              let target = e.target;
-              let message;
-              switch (target.id) {
-                case 'Open':
-                  message = 'The Pending radio button changed';
-                  break;
-                case 'resolved':
-                  message = 'The Resolved radio button changed';
-                  break;
-                case 'rejected':
-                  message = 'The Rejected radio button changed';
-                  break;
-              }
-              result.textContent = message;
-            });
-          </script> -->
           <form action="" id="Order" method="POST" class="container-fluid py-2 small" >
-            <!-- <div class="form-group row py-1">
-              
-              <select class="col form-control smallie" id="OrderType" name="OrderType" onchange="checkOrderType(this.value)" required>
-                <option>Limit</option>
-                <option>Market</option>
-              </select>
-            </div> -->
             <div id="OrderTypeDiv" class="form-group row py-2">
               <label class="col-5 align-self-center">Order Type</label>
-              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
-                <input class="form-check-input" type="radio" name="OrderType" id="Limit" value="Limit" checked>
-                <label class="form-check-label" for="Limit">Limit</label>
-              </div>
-              <div class="col align-self-center form-check form-check-inline m-0 mx-1">
-                <input class="form-check-input" type="radio" name="OrderType" id="Market" value="Market">
-                <label class="form-check-label" for="Market">Market</label>
+              <div class="col">
+                <div class="row">
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="OrderType" id="Limit" value="Limit" checked>
+                    <label class="form-check-label" for="Limit">Limit</label>
+                  </div>
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="OrderType" id="StopLimit" value="StopLimit">
+                    <label class="form-check-label" for="StopLimit">Stop Limit</label>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="OrderType" id="Market" value="Market">
+                    <label class="form-check-label" for="Market">Market</label>
+                  </div>
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="OrderType" id="StopMarket" value="StopMarket">
+                    <label class="form-check-label" for="StopMarket">Stop Market</label>
+                  </div>
+                </div>
               </div>
             </div>
             <!-- <div class="form-group row py-1">
@@ -188,7 +148,7 @@
                 <label class="form-check-label" for="Market">Index</label>
               </div>
             </div>
-            <div class="form-group row py-1">
+            <div id="SymbolDiv" class="form-group row py-1">
               <label class="col-5 align-self-center" for="Symbol">Symbol</label>
               <input id="Symbol" type="text" class="col form-control smallie" name="Symbol" placeholder="Symbol" required>
               <a onclick="CheckSymbol()" class="col-2 btn btn-primary btn-sm pb-0 mx-1">Search</a>
@@ -206,14 +166,6 @@
                 <option disabled selected>Select Strike Price</option>
               </select>
             </div>
-            <!-- <div id="TradeActionDiv" class="form-group row py-1">
-              <label class="col-5 align-self-center" for="TradeAction">Trade Action</label>
-              <select id="TradeAction" class="col form-control smallie" name="TradeAction" placeholder="Select Trade Action" onchange="UpdateOptionName()" required>
-                <option disabled selected>Select Trade Action</option>
-                <option value="Call">Call</option>
-                <option value="Put">Put</option>
-              </select>
-            </div> -->
             <div id="TradeActionDiv" class="form-group row py-2">
               <label class="col-5 align-self-center">Trade Action</label>
               <div class="col align-self-center form-check form-check-inline m-0 mx-1">
@@ -237,6 +189,10 @@
               <label class="col-5 align-self-center" for="LimitPrice">Limit Price</label>
               <input type="number" class="col form-control smallie" id="LimitPrice" onkeyup="CalculateMaxLoss()" name="LimitPrice" placeholder="Limit price for Order" step=".01" required>
             </div>
+            <div id="StopPriceDiv" class="form-group row py-1" hidden>
+              <label class="col-5 align-self-center" for="LimitPrice">Stop Price</label>
+              <input type="number" class="col form-control smallie" id="StopPrice" name="StopPrice" placeholder="Stop price for Order" step=".01" false>
+            </div>
             <div id="MaxLossDiv" class="form-group row py-1">
               <label class="col-5 align-self-center" for="MaxLoss">Max Loss</label>
               <input id="MaxLoss" type="text" class="col form-control smallie" name="MaxLoss" placeholder="0.00" readonly>
@@ -246,20 +202,47 @@
                 <a type="submit" value="Confirm" onclick="ConfirmOrder()" class="btn btn-primary px-5 smallie">Confirm</a>
               </div> -->
               <div class="col text-center m-1 p-0">
-                <input type="submit" value="Execute" onclick="Order()" class="btn btn-danger px-5 smallie">
+                <input type="submit" value="Execute" class="btn btn-danger px-5 smallie">
               </div>
             </div>
-            <div class="form-check form-switch small py-0 my-0">
-              <input id="ActivationRulesCheck" class="form-check-input" type="checkbox" onclick='ActivationDisplay(this.checked)'>
-              <label for="ActivationRulesCheck" class="form-check-label">Add Activation Rules</label>
+            <div class="form-row">
+              <div id="ActivationRulesCheckDiv" class="form-check form-switch small py-0 my-0">
+                <input id="ActivationRulesCheck" class="form-check-input" type="checkbox" onclick='ActivationDisplay(this.checked)'>
+                <label for="ActivationRulesCheck" class="form-check-label">Add Activation Rules</label>
+              </div>
+              <div id="TrailingStopCheckDiv" class="form-check form-switch small py-0 my-0">
+                <input id="TrailingStopCheck" class="form-check-input" type="checkbox" onclick='TrailingStopDisplay(this.checked)'>
+                <label for="TrailingStopCheck" class="form-check-label">Add Trailing Stop</label>
+              </div>
             </div>
             <div class="form-check form-switch small py-0 my-0">
               <input id="OrderBoxCheck" class="form-check-input" type="checkbox" onclick='OrderDisplay(this.checked)' checked>
               <label for="OrderBoxCheck" class="form-check-label">Show Order Details</label>
             </div>
 
+            <!-- Trailing Stop -->
+            <div class="container-fluid border" id="TrailingStop" hidden>
+              <div class="row gx-1">
+                <div id="TrailingStopDiv" class="form-group row py-2">
+                  <label class="col-5 align-self-center">Trailing Stop</label>
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="TrailingStop" id="Amount" value="Amount" checked disabled>
+                    <label class="form-check-label" for="Limit">Amount</label>
+                  </div>
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="TrailingStop" id="Percent" value="Percent" disabled>
+                    <label class="form-check-label" for="Market">Percent</label>
+                  </div>
+                </div>
+                <div class="form-group row py-1">
+                  <label class="col-5 align-self-center" for="TrailingValue">Trailing Stop Offset</label>
+                  <input id="TrailingValue" type="number" class="col form-control form-control-sm smallie" name="TrailingValue" placeholder="Quantity of Order" step=".01" required disabled>
+                </div>
+              </div>
+            </div>
+
             <!-- Activation Rules -->
-            <div class="container-fluid" id="ActivationRules" hidden>
+            <div class="container-fluid border" id="ActivationRules" hidden>
               <div id="DeleteRuleButton" class="text-center small">
                 <a class="btn btn-danger p-1 m-1 btn-sm" onclick="DeleteRule()" disabled>Delete Rule</a>
               </div>
@@ -347,37 +330,33 @@
                 }
                 return selectedValue
               }
+              
+              $(document).on('submit', '#Order', function() {
+                let data
 
-              async function Order() {
-                $(document).on('submit', '#Order', function() {
-                  // const getOpenOrClose = () => {
-                  //   const rbs = document.querySelectorAll('input[name="OpenOrClose"]');
-                  //   let selectedValue;
-                  //   for (const rb of rbs) {
-                  //     if (rb.checked) {
-                  //       selectedValue = rb.id;
-                  //       break;
-                  //     }
-                  //   }
-                  //   return "OpenOrClose=" + selectedValue
-                  // }
-                  const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
+                const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
+                const description = "Mode=ModifyOrder"
 
-                  let data = [openOrClose, $('form#Order').serialize()].join('&')
+                if (document.getElementById("Description").innerHTML.startsWith("Modify Order")) {
+                  const orderId = document.getElementById("Description").innerHTML.substring(12)
+                  console.log(orderId)
+                  data = [openOrClose, "OrderId="+orderId, description, $('form#Order').serialize()].join('&')
+                } else {
+                  data = [openOrClose, $('form#Order').serialize()].join('&')
+                }
 
-                  $.post(`/api/order/execute`, data, function(data) {
-                      alert(JSON.stringify(data));
-                    },
-                    'json' // I expect a JSON response
-                  )
-                  .fail((err) => alert('An error occured'))
-                  .always(() => {
-                    // setTimeout(location.href.reload(), 2000)
-                  })
-                  .then(() => location.reload())
-                  return false;
+                $.post(`/api/order/execute`, data, function(data) {
+                    alert(JSON.stringify(data));
+                  },
+                  'json' // I expect a JSON response
+                )
+                .fail((err) => alert('An error occured'))
+                .always(() => {
+                  // setTimeout(location.href.reload(), 2000)
                 })
-              }
+                .then(() => location.reload())
+                return false;
+              })
               
               async function ConfirmOrder() {
                 const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
@@ -436,23 +415,7 @@
                 $("#StrikePrice").empty();
                 $("#StrikePrice").append(allPrices);
               }
-  
-              // function UpdateTradeAction(strikePrice) {
-              //   const symbolData = JSON.parse(localStorage.getItem('symbolData'))
-              //   const tradeActions = Object.keys(symbolData[$("#ExpirationDate").val()][strikePrice]);
-  
-              //   // let allTradeActions = '<option disabled selected>Select Trade Action</option>';
-              //   // tradeActions.map((action) => {
-              //   //   allTradeActions += `<option value="${action}">${action}</option>`
-              //   // })
-              //   let allTradeActions = `<option disabled selected>Select Trade Action</option>
-              //   <option value="Call">Call</option>
-              //   <option value="Put">Put</option>`
-                
-              //   $("#TradeAction").empty();
-              //   $("#TradeAction").append(allTradeActions);
-              // }
-  
+
               function UpdateOptionName() {
                 const symbolData = JSON.parse(localStorage.getItem('symbolData'))
                 const optionName = symbolData[$("#ExpirationDate").val()][$("#StrikePrice").val()][getRadioValue("TradeAction")];
@@ -471,7 +434,7 @@
                 const quantity = document.getElementById("Quantity").value;
                 const limitPrice = document.getElementById("LimitPrice").value;
                 const maxLoss = Number(quantity) * Number(limitPrice) * 100
-                if (limitPrice && quantity) $("#MaxLoss").val('$'+ maxLoss.toString())
+                if (limitPrice && quantity) $("#MaxLoss").val('$'+ numberWithCommas(maxLoss))
                 else $("#MaxLoss").val("")
               }
   
@@ -494,45 +457,68 @@
                   $("#ActivationRules *").attr("disabled", "disabled")
                 }
               }
+              function TrailingStopDisplay(checked) {
+                if (checked) {
+                  document.getElementById("TrailingStop").hidden = false;
+                  $('#TrailingStop *').prop("disabled", true);
+                  $('#TrailingStop *').removeAttr("disabled");
+                } else {
+                  document.getElementById("TrailingStop").hidden = true;
+                  $("#TrailingStop *").attr("disabled", "disabled")
+                }
+              }
             </script>
             <script>
               $('input[type=radio][name=OrderType]').change(function() {
+
+                getRadioValue("OpenOrClose") == "Close" && this.value == "StopMarket" ?
+                  document.getElementById('TrailingStopCheckDiv').hidden = false :
+                  document.getElementById('TrailingStopCheckDiv').hidden = true
+
+                getRadioValue("OpenOrClose") == "Close" ?
+                  document.getElementById('ActivationRulesCheckDiv').hidden = false :
+                  document.getElementById('ActivationRulesCheckDiv').hidden = true
+
+
                 if (this.value == 'Limit') {
                   document.getElementById('LimitPriceDiv').hidden = false;
                   document.getElementById('LimitPrice').required = true;
-                  document.getElementById('MaxLossDiv').hidden = false;
+                  document.getElementById('StopPriceDiv').hidden = true;
+                  document.getElementById('StopPrice').required = false;
+                  if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
+                  else document.getElementById('MaxLossDiv').hidden = true;
                 }
                 else if (this.value == 'Market') {
                   document.getElementById('LimitPriceDiv').hidden = true;
                   document.getElementById('LimitPrice').required = false;
+                  document.getElementById('StopPriceDiv').hidden = true;
+                  document.getElementById('StopPrice').required = false;
+                  document.getElementById('MaxLossDiv').hidden = true;
+                }
+                else if (this.value == 'StopLimit') {
+                  document.getElementById('LimitPriceDiv').hidden = false;
+                  document.getElementById('LimitPrice').required = true;
+                  document.getElementById('StopPriceDiv').hidden = false;
+                  document.getElementById('StopPrice').required = true;
+                  if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
+                  else document.getElementById('MaxLossDiv').hidden = true;
+                }
+                else if (this.value == 'StopMarket') {
+                  document.getElementById('LimitPriceDiv').hidden = true;
+                  document.getElementById('LimitPrice').required = false;
+                  document.getElementById('StopPriceDiv').hidden = false;
+                  document.getElementById('StopPrice').required = true;
                   document.getElementById('MaxLossDiv').hidden = true;
                 }
               });
-              // function checkOrderType(value) {
-              //   if (value == 'Limit') {
-              //     document.getElementById('LimitPriceDiv').hidden = false;
-              //     document.getElementById('LimitPrice').required = true;
-              //     document.getElementById('MaxLossDiv').hidden = false;
-              //     // document.getElementById('StopPriceDiv').hidden = true;
-              //     // document.getElementById('StopPrice').required = false;
-              //   // } else if (value == "Stop Market") {
-              //   //   document.getElementById('LimitPriceDiv').hidden = true;
-              //   //   document.getElementById('LimitPrice').required = false;
-              //   //   document.getElementById('StopPriceDiv').hidden = false;
-              //   //   document.getElementById('StopPrice').required = true;
-              //   // } else if (value == "Stop Limit") {
-              //   //   document.getElementById('LimitPriceDiv').hidden = false;
-              //   //   document.getElementById('LimitPrice').required = true;
-              //   //   document.getElementById('StopPriceDiv').hidden = false;
-              //   //   document.getElementById('StopPrice').required = true;
-              //   } else if (value == "Market") {
-              //     document.getElementById('LimitPriceDiv').hidden = true;
-              //     document.getElementById('LimitPrice').required = false;
-              //     document.getElementById('MaxLossDiv').hidden = true;
-              //     // document.getElementById('StopPriceDiv').hidden = true;
-              //     // document.getElementById('StopPrice').required = false;
-              //   }
-              // }
+              $('input[type=radio][name=OpenOrClose]').change(function() {
+                $("#Order").trigger('reset')
+                if (this.value == 'Close') {
+                  document.getElementById('MaxLossDiv').hidden = true;
+                } else if (this.value == 'Open') {
+                  document.getElementById('MaxLossDiv').hidden = false;
+                }
+              })
             </script>
           </form>
         </div>
@@ -549,20 +535,22 @@
         <div class="card-header">
           <h6 class="my-0">Trade Manager - Positions</h6>
         </div>
-        <div class="card-body container-fluid small">
+        <div class="card-body container-fluid">
           <div id="TradeManager" class="row justify-content-start">
-            <strong class="m-0 text-primary">AccountID: <label class='text-light' id="AccountID" for="position-table">---------</label></strong>
+            <strong class="m-0 text-primary small">AccountID: <label class='small text-light' id="AccountID" for="position-table">---------</label></strong>
             <div>
-              <table id="PositionTable1" class="small table table-sm table-bordered table-dark mb-1">
-                <thead class="text-center">
+              <table id="PositionTable1" class="small table table-sm table-borderless table-bordered table-dark mb-1">
+                <thead class="text-center thead-dark">
                   <tr>
                     <th scope="col">Symbol</th>
                     <th scope="col">Quantity</th>
                     <th scope="col">Average Price</th>
                     <th scope="col">Last Price</th>
                     <th scope="col">Open P/L (Acct)</th>
+                    <th scope="col">Open P/L %</th>
                     <th scope="col">Total Cost</th>
-                    <!-- <th scope="col">Account Balance</th> -->
+                    <th scope="col">Market Value</th>
+                    <th scope="col">Close Position</th>
                   </tr>
                 </thead>
                 <tbody id="PositionTable1" class="align-middle">
@@ -594,14 +582,14 @@
           <div id="OrderDetailsCard" class="row justify-content-start">
             <!-- <strong class="m-0 text-primary">Xgen OrderID: <label class='text-light' id="XgenOrderID" for="position-table">---------</label></strong> -->
             <div>
-              <table id="OrdersTable1" class="small table table-sm table-bordered table-dark mb-1">
-                <thead class="text-center">
+              <table id="OrdersTable1" class="table table-sm table-borderless table-bordered table-dark mb-1">
+                <thead class="text-center thead-dark">
                   <tr>
                     <th scope="col">Xgen OrderID</th>
                     <th scope="col">Participants</th>
                     <th scope="col">Status</th>
                     <th scope="col">Description</th>
-                    <th scope="col">Cancel</th>
+                    <th scope="col">Edit</th>
                   </tr>
                 </thead>
                 <tbody id="OrderDetails" class="align-middle">
@@ -640,40 +628,6 @@
   </div>
   <!-- Bottom Right Card -->
 
-  <!-- Order Box -->
-  <div id="ModifyOrderBox" class="position-fixed" style="width: 30rem; right: 50%; margin-right: -15rem; bottom: .3rem" hidden>
-    <div class="row justify-content-center">
-      <div class="card bg-dark col align-self-center">
-        <div class="card-header">
-          <h6 class="card-title text-center">Order Details</h5>
-        </div>
-        <div id='ModifyOrderBoxDetails' class="card-body small">
-          <h6 class="card-title"></h6>
-          <div class="card-text"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!-- Order Box -->
-
-  <script id="intervals">
-    $(document).ready(function() {
-      setInterval( function() {
-      var datetime = new Date()
-      var time = datetime.toTimeString().split(" ").filter((part)=>!part.startsWith('GMT')).join(" ");
-      $(".time").html(time);
-      }, 1000);
-      setInterval(async function() {
-        fetch("/api/positions")
-        .then(res => res.json())
-        .then(async res => {
-          await UpdatePositions(res.data)
-        })
-        
-      }, 5000);
-    });
-  </script>
-
   <script>
     async function Logout(){
       await fetch('/logout')
@@ -687,30 +641,84 @@
     }
   </script>
 
-  <script>
-    const editCancel = (status) => status === `"Filled"` ? `<div class='btn btn-primary'></div>` : 
-    "<div class='btn btn-primary'><a class='link-light' onclick='CancelOrder(${orderCategory})'>Cancel</a></div>"
+  <script type="text/javascript">
+    const editCancel = (status, orderCategory) => status === `"Filled"` ? `<div class='btn btn-primary'></div>` : 
+    `<a class='link-light btn btn-sm btn-warning p-0 px-1 mx-1' onclick="ModifyOrder('${orderCategory}')">Modify</a><a class='link-light btn btn-sm btn-danger p-0 px-1 mx-1' onclick="CancelOrder('${orderCategory}')">Cancel</a>`
+    
     async function ViewOrders() {
       await fetch(`/api/order/store`).then((res) => res.json()).then(async (order) => {
         if (!order.success) alert(order.errors.error)
         $('#OrderDetails').empty();
-        console.log(order)
+        // console.log(order)
         order = order.data.items
+        localStorage.setItem("orders", JSON.stringify(order))
         for (const [orderCategory, clientOrders] of Object.entries(order)) {
-          // console.log(clientOrders)
           if ($.isEmptyObject(clientOrders)) continue
-          if (Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === undefined) continue
-          console.log(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])
+          if (Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === undefined || 
+          Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === "UROut") continue
+          // console.log(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])
           const data = `<tr>
                           <td>${orderCategory}</td>
-                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'].map((val) => val['OrderID']))}</td>
+                          <td>${JSON.stringify(Object.values(clientOrders).map((val) => val['Orders'][0]['AccountID']))}</td>
                           <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])}</td>
                           <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['Message'])}</td>
-                          <td>${editCancel(JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription']))}</td>
+                          <td>${editCancel(JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription']), orderCategory)}</td>
                         </tr>`
           $('#OrderDetails').append(data)
         }
       })
+    }
+
+    async function ModifyOrder(orderId) {
+      await ViewOrders()
+      
+      const orders = JSON.parse(localStorage.getItem("orders"))
+
+      let selected
+      
+      for (const [orderCategory, clientOrders] of Object.entries(orders)) {
+        if (orderCategory == orderId) {
+          selected = clientOrders
+        }
+      }
+      if (!selected) {
+        return;
+      }
+      const _orderId = Object.values(selected)[0]['Orders'][0]['OrderID']
+      const orderType = Object.values(selected)[0]['Orders'][0]['OrderType']
+      const openOrClose = Object.values(selected)[0]['Orders'][0]['Legs'][0]['OpenOrClose']
+      const symbol = Object.values(selected)[0]['Orders'][0]['Legs'][0]['Symbol']
+      const quantity = Object.values(selected)[0]['Orders'][0]['Legs'][0]['QuantityOrdered']
+      let limitPrice
+      if (orderType == "Limit") limitPrice = Object.values(selected)[0]['Orders'][0]['LimitPrice']
+      else limitPrice = null
+
+      // console.log(_orderId, orderType, openOrClose, symbol, quantity, limitPrice)
+
+      $("#Order").trigger('reset')
+
+      document.getElementById("OptionName").value = symbol
+      document.getElementById("Quantity").value = quantity
+      document.getElementById("LimitPrice").value = limitPrice
+
+      document.getElementById(openOrClose).checked = true;
+      document.getElementById(orderType).checked = true;
+      document.getElementById("Description").innerHTML = `Modify Order ${orderId}`
+
+      document.getElementById("Symbol").required = false;
+      document.getElementById("SymbolDiv").hidden = true;
+      document.getElementById("ExpirationDate").required = false;
+      document.getElementById("ExpirationDateDiv").hidden = true;
+      document.getElementById("StrikePrice").required = false;
+      document.getElementById("StrikePriceDiv").hidden = true;
+      // document.getElementById("MaxLoss").required = false;
+      // document.getElementById("MaxLossDiv").hidden = true;
+      document.getElementById("TradeActionDiv").hidden = true;
+
+      // $('input[type=radio][name=TradeAction]').not(':checked').prop('disabled',true);
+      $('input[type=radio][name=OpenOrClose]').not(':checked').prop('disabled',true);
+      CalculateMaxLoss()
+
     }
     
     async function CancelOrder(orderId) {
@@ -746,63 +754,194 @@
       }
     }
 
+  </script>
+
+  <script>
+
     function PosNegCheck(variable) {
       return variable >= 0 ? "class = 'text-success'" : "class = 'text-danger'"
     }
 
     async function UpdatePositions(res) {
       if ($.isEmptyObject(res)) return
+
+      localStorage.setItem('positions', JSON.stringify(res));
       
       let allPositionsArr = []
 
       for (const [clientId, position] of Object.entries(res)){
-        const allPos_ = position.map((pos) => `
-                <tbody id="PositionTable" class="align-middle">
-                  <tr>
-                    <td>${pos['Symbol']}</td>
-                    <td>${pos['Quantity']}</td>
-                    <td>${Number(pos['AveragePrice']).toFixed(2)}</td>
-                    <td>${pos['Last']}</td>
-                    <td ${PosNegCheck(pos['UnrealizedProfitLoss'])}">${pos['UnrealizedProfitLoss']}</td>
-                    <td>${Number(pos['TotalCost']).toFixed(2)}</td>
-                  </tr>
-                </tbody>`).join(' ')
-        
-        let positionData = `<div class="small container">
+        if (Object.keys(position[0]).length == 4) {
+          let data = `<div class="small container mb-2">
           <div class="row">
             <div class="col-md-4">
               <strong class="m-0 text-primary">AccountID: <label class="text-light" for="PositionTable">${position[0]['AccountID']}</label></strong>
             </div>
             <div class="col-md-8">
               <span class="pull-right text-light">
-                <strong class="px-2">Equity: <label ${PosNegCheck(position[0]['Equity'])}>$${position[0]['Equity']}</label></strong>
-                <strong class="px-2">Buying Power: <label ${PosNegCheck(position[0]['BuyingPower'])}>$${position[0]['BuyingPower']}</label></strong>
-                <strong class="px-2">Cash Balance: <label ${PosNegCheck(position[0]['CashBalance'])}>$${position[0]['CashBalance']}</label></strong>
+                <strong class="px-2">Equity: <label ${PosNegCheck(position[0]['Equity'])}>$${numberWithCommas(Number(position[0]['Equity']))}</label></strong>
+                <strong class="px-2">Buying Power: <label ${PosNegCheck(position[0]['BuyingPower'])}>$${numberWithCommas(Number(position[0]['BuyingPower']))}</label></strong>
+                <strong class="px-2">Cash Balance: <label ${PosNegCheck(position[0]['CashBalance'])}>$${numberWithCommas(Number(position[0]['CashBalance']))}</label></strong>
+              </span>
+            </div>
+          </div></div>`
+          allPositionsArr.push(data)
+          continue
+        }
+        const allPos_ = position.map((pos) => `
+                  <tr>
+                    <th scope="row">${pos['Symbol']}</th>
+                    <td>${pos['Quantity']}</td>
+                    <td>${numberWithCommas(Number(pos['AveragePrice']))}</td>
+                    <td>${pos['Last']}</td>
+                    <td ${PosNegCheck(pos['UnrealizedProfitLoss'])}">${numberWithCommas(Number(pos['UnrealizedProfitLoss']))}</td>
+                    <td ${PosNegCheck(pos['UnrealizedProfitLossPercent'])}">${numberWithCommas(Number(pos['UnrealizedProfitLossPercent']))}%</td>
+                    <td>${numberWithCommas(Number(pos['TotalCost']))}</td>
+                    <td>${numberWithCommas(Number(pos['MarketValue']))}</td>
+                    <td class="text-center"><a class="btn btn-danger btn-sm py-0 m-0" onClick="ClosePosition('${(pos['PositionID'])}')">Close</a></td>
+                  </tr>`).join(' ')
+        
+        let positionData = `<div class="small container mb-2">
+          <div class="row">
+            <div class="col-md-4">
+              <strong class="m-0 text-primary">AccountID: <label class="text-light" for="PositionTable">${position[0]['AccountID']}</label></strong>
+            </div>
+            <div class="col-md-8">
+              <span class="pull-right text-light">
+                <strong class="px-2">Equity: <label ${PosNegCheck(position[0]['Equity'])}>$${numberWithCommas(Number(position[0]['Equity']))}</label></strong>
+                <strong class="px-2">Buying Power: <label ${PosNegCheck(position[0]['BuyingPower'])}>$${numberWithCommas(Number(position[0]['BuyingPower']))}</label></strong>
+                <strong class="px-2">Cash Balance: <label ${PosNegCheck(position[0]['CashBalance'])}>$${numberWithCommas(Number(position[0]['CashBalance']))}</label></strong>
               </span>
             </div>
           </div>
-            <div class="table-responsive">
-              <table class="table table-bordered table-sm table-dark mb-1">
-                <thead class="">
-                  <tr>
-                    <th scope="col">Symbol</th>
-                    <th scope="col">Quantity</th>
-                    <th scope="col">Average Price</th>
-                    <th scope="col">Last Price</th>
-                    <th scope="col">Open P/L (Acct)</th>
-                    <th scope="col">Total Cost</th>
-                  </tr>
-                </thead>`
-                + allPos_ +
-                `
-              </table>
-            </div>
-          </div>`
+          <div class="table-responsive">
+            <table class="table table-borderless table-bordered table-sm table-dark mb-1">
+              <thead class="thead-dark">
+                <tr>
+                  <th scope="col">Symbol</th>
+                  <th scope="col">Quantity</th>
+                  <th scope="col">Average Price</th>
+                  <th scope="col">Last Price</th>
+                  <th scope="col">Open P/L (Acct)</th>
+                  <th scope="col">Open P/L %</th>
+                  <th scope="col">Total Cost</th>
+                  <th scope="col">Market Value</th>
+                  <th scope="col">Close Position</th>
+                </tr>
+              </thead>
+              
+              <tbody id="PositionTable" class="align-middle">`
+              + allPos_ +
+              `
+              </tbody>
+            </table>
+          </div>
+        </div>`
         allPositionsArr.push(positionData)
       } 
       document.getElementById("TradeManager").innerHTML = allPositionsArr.join("\n")
     }
 
+    function ClosePosition(positionId) {
+      const positions = JSON.parse(localStorage.getItem('positions'));
+      // console.log(positions)
+      let select, selected
+      for (const [clientId, position] of Object.entries(positions)){
+        // console.log(position)
+        select = position.filter((pos) => pos['PositionID'] == positionId)[0]
+        if (select) selected = select
+      }
+      
+      // console.log(select, selected)
+
+      if (!selected) {
+        return;
+      }
+      $("#Order").trigger('reset')
+
+      document.getElementById("Close").checked = true;
+      document.getElementById("Description").innerHTML = `Close Position ${positionId}`
+
+      document.getElementById("Symbol").required = false;
+      document.getElementById("SymbolDiv").hidden = true;
+      document.getElementById("ExpirationDate").required = false;
+      document.getElementById("ExpirationDateDiv").hidden = true;
+      document.getElementById("StrikePrice").required = false;
+      document.getElementById("StrikePriceDiv").hidden = true;
+      document.getElementById("MaxLoss").required = false;
+      document.getElementById("MaxLossDiv").hidden = true;
+      document.getElementById("TradeActionDiv").hidden = true;
+
+      // if (selected["LongShort"] == "Long") {
+      //   document.getElementById("Put").checked = true
+      // } else {
+      //   document.getElementById("Call").checked = true
+      // }
+
+      $('input[type=radio][name=TradeAction]').not(':checked').prop('disabled',true);
+      $('input[type=radio][name=OpenOrClose]').not(':checked').prop('disabled',true);
+
+      document.getElementById("OptionName").value = selected["Symbol"]
+      
+      // console.log(selected)
+    }
+
+  </script>
+
+  <script>
+
+    function numberWithCommas(x) {
+      // return x.toFixed(2).replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+      return Number(x.toFixed(2)).toLocaleString()
+    }
+  </script>
+
+  <script id="intervals">
+    $(document).ready(function() {
+      setInterval( function() {
+      var datetime = new Date()
+      var time = datetime.toTimeString().split(" ").filter((part)=>!part.startsWith('GMT')).join(" ");
+      $(".time").html(time);
+      }, 1000);
+
+      setInterval(async function() {
+        fetch("/api/positions")
+        .then(res => res.json())
+        .then(async res => {
+          if (!res.success) return // alert(res.errors.error)
+          await UpdatePositions(res.data)
+        })
+      }, 1500);
+    });
+  </script>
+
+  <script>
+    window.addEventListener('load', async () => {
+      document.getElementById('tradingMode').innerHTML == "SIM" ? 
+      setSIM() : setLIVE()
+
+      function setSIM() {
+        document.getElementById('tradingModeButton').innerHTML = "LIVE";
+        document.getElementById('tradingMode').className = "strong btn btn-lg btn-danger btn-light-outline p-2 px-5 m-0";
+      }
+      function setLIVE() {
+        document.getElementById('tradingModeButton').innerHTML = "SIM";
+        document.getElementById('tradingMode').className = "strong btn btn-lg btn-success btn-light-outline p-2 px-5 m-0";
+      }
+
+      $("#Order").trigger('reset')
+
+      fetch("/api/start")
+      .then(response => response.json())
+      .then(res => {
+        if (!res.success) {
+          alert(res.errors.detail)
+          location.href = "/login"
+        }
+      })
+
+      fetch('/api/positions/stream')
+      .then(async () => await ViewOrders())
+    })
   </script>
 
 </body>
