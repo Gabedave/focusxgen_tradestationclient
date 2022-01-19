@@ -206,11 +206,11 @@
               </div>
             </div>
             <div class="form-row">
-              <div id="ActivationRulesCheckDiv" class="form-check form-switch small py-0 my-0">
+              <div id="ActivationRulesCheckDiv" class="form-check form-switch small py-0 my-0" hidden>
                 <input id="ActivationRulesCheck" class="form-check-input" type="checkbox" onclick='ActivationDisplay(this.checked)'>
                 <label for="ActivationRulesCheck" class="form-check-label">Add Activation Rules</label>
               </div>
-              <div id="TrailingStopCheckDiv" class="form-check form-switch small py-0 my-0">
+              <div id="TrailingStopCheckDiv" class="form-check form-switch small py-0 my-0" hidden>
                 <input id="TrailingStopCheck" class="form-check-input" type="checkbox" onclick='TrailingStopDisplay(this.checked)'>
                 <label for="TrailingStopCheck" class="form-check-label">Add Trailing Stop</label>
               </div>
@@ -469,9 +469,8 @@
               }
             </script>
             <script>
-              $('input[type=radio][name=OrderType]').change(function() {
-
-                getRadioValue("OpenOrClose") == "Close" && this.value == "StopMarket" ?
+              const changeOrderTypeCB = (value) => {
+                getRadioValue("OpenOrClose") == "Close" && value == "StopMarket" ?
                   document.getElementById('TrailingStopCheckDiv').hidden = false :
                   document.getElementById('TrailingStopCheckDiv').hidden = true
 
@@ -480,7 +479,7 @@
                   document.getElementById('ActivationRulesCheckDiv').hidden = true
 
 
-                if (this.value == 'Limit') {
+                if (value == 'Limit') {
                   document.getElementById('LimitPriceDiv').hidden = false;
                   document.getElementById('LimitPrice').required = true;
                   document.getElementById('StopPriceDiv').hidden = true;
@@ -488,14 +487,14 @@
                   if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
                   else document.getElementById('MaxLossDiv').hidden = true;
                 }
-                else if (this.value == 'Market') {
+                else if (value == 'Market') {
                   document.getElementById('LimitPriceDiv').hidden = true;
                   document.getElementById('LimitPrice').required = false;
                   document.getElementById('StopPriceDiv').hidden = true;
                   document.getElementById('StopPrice').required = false;
                   document.getElementById('MaxLossDiv').hidden = true;
                 }
-                else if (this.value == 'StopLimit') {
+                else if (value == 'StopLimit') {
                   document.getElementById('LimitPriceDiv').hidden = false;
                   document.getElementById('LimitPrice').required = true;
                   document.getElementById('StopPriceDiv').hidden = false;
@@ -503,13 +502,17 @@
                   if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
                   else document.getElementById('MaxLossDiv').hidden = true;
                 }
-                else if (this.value == 'StopMarket') {
+                else if (value == 'StopMarket') {
                   document.getElementById('LimitPriceDiv').hidden = true;
                   document.getElementById('LimitPrice').required = false;
                   document.getElementById('StopPriceDiv').hidden = false;
                   document.getElementById('StopPrice').required = true;
                   document.getElementById('MaxLossDiv').hidden = true;
                 }
+              }
+
+              $('input[type=radio][name=OrderType]').change(function() {
+                changeOrderTypeCB(this.value)
               });
               $('input[type=radio][name=OpenOrClose]').change(function() {
                 $("#Order").trigger('reset')
@@ -703,6 +706,7 @@
 
       document.getElementById(openOrClose).checked = true;
       document.getElementById(orderType).checked = true;
+      changeOrderTypeCB(getRadioValue("OrderType"))
       document.getElementById("Description").innerHTML = `Modify Order ${orderId}`
 
       document.getElementById("Symbol").required = false;
@@ -870,6 +874,9 @@
       document.getElementById("MaxLoss").required = false;
       document.getElementById("MaxLossDiv").hidden = true;
       document.getElementById("TradeActionDiv").hidden = true;
+
+      TrailingStopDisplay(false)
+      document.getElementById('TrailingStopCheckDiv').hidden = true
 
       // if (selected["LongShort"] == "Long") {
       //   document.getElementById("Put").checked = true

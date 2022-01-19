@@ -270,6 +270,7 @@ async def create_order(
     OptionName: str = Form(...),
     Quantity: int = Form(...),
     LimitPrice: Optional[str] = Form(None),
+    StopPrice: Optional[str] = Form(None),
     Predicate: Optional[str] = Form(None),
     Price: Optional[float] = Form(None),
     Operator1: Optional[str] = Form(None),
@@ -346,8 +347,11 @@ async def create_order(
             "Route": "Intelligent"
         }
 
-        if OrderType == 'Limit':
+        if OrderType == 'Limit' or OrderType == 'StopLimit':
             order['LimitPrice'] = str(LimitPrice)
+
+        if OrderType == 'StopLimit' or OrderType == 'StopMarket':
+            order['StopPrice'] = str(StopPrice)
 
         if ActivationRules != []:
             order['AdvancedOptions'] = {"MarketActivationRules" : ActivationRules}
