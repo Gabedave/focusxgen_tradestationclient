@@ -114,8 +114,8 @@ class Client(object):
 
     def profile_logout(self, client_id: str) -> None:
         try:
-            if client_id in self.client__: self.client__.remove(client_id)
             self.client[client_id].logout(temporary=True)
+            if client_id in self.client__: self.client__.remove(client_id)
             return True
         except:
             return False
@@ -131,21 +131,10 @@ class Client(object):
 
     async def change_trading_mode(self, paper_trading: bool = True):
         self.configure_profiles(paper_trading)
-        await asyncio.gather(*[self.profile_login(x) for x in self.client.keys()])
+        # await asyncio.gather(*[self.profile_login(x) for x in self.client.keys()])
+        await asyncio.gather(*[self.profile_login(x) for x in self.client__])
 
         return True
-
-    # def get_profile_position(self, client_id: str) -> dict:
-    #     profile = self.client[client_id]
-    #     Position: dict = profile.account_positions()['Positions']
-    #     Balance: dict = profile.account_balances()['Balances']
-
-    #     # Append Account Balance to the Position dict
-    #     for p, p_ in Position.items():
-    #         for b, b_ in Balance.items():
-    #             if b_['AccountID'] == p_['AccountID'] and b_['AccountType'] == "Cash": # Cash AccountType
-    #                 p_['CashBalance'] = b_['CashBalance']
-    #     return p_
 
     async def get_all_positions(self) -> dict:
         async def pos(client_id):
@@ -164,10 +153,11 @@ class Client(object):
                         p_['CashBalance'] = b_['CashBalance']
                         p_['BuyingPower'] = b_['BuyingPower']
                         p_['Equity'] = b_['Equity']
-                        results.append(p_)  # all_positions[client_id].append(p_)
+                        results.append(p_)
             
-            if results == []: # all_positions[client_id] == []:
-                new = {"AccountID": list(filter(lambda x: x[1] == 'Margin', profile.config["AccountID"]))[0][0]}
+            if results == []:
+                # print(profile.config["AccountID"], profile.config['client_id'])
+                new = {"AccountID": list(filter(lambda x: x[1] == 'Margin' or x[1] == 'Cash', profile.config["AccountID"]))[0][0]}
                 for b_ in Balances:
                     if b_['AccountID'] == new['AccountID']:
                         new['CashBalance'] = b_['CashBalance']
@@ -177,15 +167,14 @@ class Client(object):
 
             return (profile.config['client_id'], results)
 
-        # print(all_positions)
+        # print("self.client__", self.client__)
 
         gather = await asyncio.gather(*[pos(x) for x in self.client__])
         all_positions = {x: y for x, y in gather}
 
         self.positions = all_positions
 
-        return all_positions
-
+        # print(all_positions)
         return all_positions
 
     # async def get_all_positions_stream(self):
@@ -194,7 +183,6 @@ class Client(object):
     #         await asyncio.sleep(5)
     #         yield json.dumps(res)
             
-
     def date_parse(self, data):
         # datetime = int(list(filter(lambda x: x['ExpirationType'] == "Weekly", data))[0]['ExpirationDate'].strip('/Date()/ '))
         datetim = int(data['ExpirationDate'].strip('/Date() '))
@@ -234,7 +222,7 @@ class Client(object):
             else: accounts = profile.config['AccountID']
                 
             order_ = deepcopy(order)
-            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin', accounts))[0][0]
+            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin' or x[1] == 'Cash', accounts))[0][0]
             
             # pprint({x: order_})
             res = await profile.submit_order(order_)
@@ -255,7 +243,7 @@ class Client(object):
             else: accounts = profile.config['AccountID']
                 
             order_ = deepcopy(order)
-            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin', accounts))[0][0]
+            order_['AccountID'] = list(filter(lambda x: x[1] == 'Margin' or x[1] == 'Cash', accounts))[0][0]
             
             # pprint(order_)
             res = await profile.confirm_order(order_)
@@ -301,7 +289,7 @@ class Client(object):
 
             if res['Errors'] != []:
                 raise Exception(res["Errors"])
-            return x, list(filter(lambda x: x['StatusDescription'] != 'Rejected', res['Orders']))
+            return x, res['Orders'] # list(filter(lambda x: x['Status'] not in ['OUT'], res['Orders']))
 
         gather = await asyncio.gather(*[get(x) for x in self.client__])
         responses = {x: y for x, y in gather}
@@ -317,17 +305,12 @@ class Client(object):
         sorted = {}
 
         for order_id in deepcopy(list(self.store.keys())):
-
             for client_id in self.client__:
-
                 if orders_[client_id] == []: continue
 
                 for detail in orders_[client_id]:
-
                     # if order_id not in self.store.keys(): continue
-
                     # print(client_id, self.store[order_id][client_id])
-
                     if client_id not in self.store[order_id]: continue
 
                     if self.store[order_id][client_id]['Orders'][0]['OrderID'] == detail['OrderID']:
@@ -337,17 +320,22 @@ class Client(object):
 
                         sorted[order_id][client_id]['Orders'][0]['AccountID'] = detail['AccountID']
                         sorted[order_id][client_id]['Orders'][0]['StatusDescription'] = detail['StatusDescription']
+                        sorted[order_id][client_id]['Orders'][0]['RejectReason'] = detail['RejectReason'] if detail['StatusDescription'] == "Rejected" else ""
                         sorted[order_id][client_id]['Orders'][0]['OrderType'] = detail['OrderType']
                         sorted[order_id][client_id]['Orders'][0]['Legs'] = detail['Legs']
                         if detail["OrderType"] == "Limit":
                             sorted[order_id][client_id]['Orders'][0]['LimitPrice'] = detail['PriceUsedForBuyingPower']
+                        if detail["OrderType"] == "StopMarket":
+                            sorted[order_id][client_id]['Orders'][0]['StopPrice'] = detail['StopPrice']
+                        if detail["OrderType"] == "StopLimit":
+                            sorted[order_id][client_id]['Orders'][0]['LimitPrice'] = detail['LimitPrice']
+                            sorted[order_id][client_id]['Orders'][0]['StopPrice'] = detail['StopPrice']
 
                     # else:
                         
                     #     del self.store[order_id]
                     #     continue
         
-        # pprint("sorted")
         # pprint(sorted)
         return sorted
         
@@ -359,19 +347,23 @@ class Client(object):
             res = await profile.cancel_order(self.store[order_id][x]['Orders'][0]['OrderID'])
             # pprint(res)
 
-            if "Errors" in res:
-                success = False
-
             # if res['Message'] == "Order successfully canceled.":
             #     del self.store[order_id]
+
+            if "Error" not in res:
+                # print(new_order['OrderType'])
+                self.store[order_id][x]['Orders'][0]['StatusDescription'] = "Cancelled"
+                self.store[order_id][x]['Orders'][0]['Message'] = res["Message"]
+            else:
+                success = False
             
             return x, res
 
         gather = await asyncio.gather(*[cancel(x) for x in self.client__])
         responses = {x: y for x, y in gather}
 
-        if success:
-            del self.store[order_id]
+        # if success:
+        #     del self.store[order_id]
 
         return responses
 
@@ -381,9 +373,20 @@ class Client(object):
     
             res = await profile.replace_order(self.store[order_id][x]['Orders'][0]['OrderID'], new_order)
 
+            switch_orderType = lambda x: {
+                "Market": "Market",
+                "Limit": f"{new_order.get('LimitPrice')} Limit",
+                "StopMarket": f"{new_order.get('StopPrice')} Market",
+                "StopLimit": f"Limit Price: {new_order.get('LimitPrice')}, Stop Price: {new_order.get('StopPrice')}"
+            }.get(x, "")
+
             if "Error" not in res:
-                self.store[order_id][x]['Orders'][0]['Message'] = self.store[order_id][x]['Orders'][0]['Message'].split(new_order['Symbol'])[0][:-2] + new_order['Quantity'] + ' ' + new_order['Symbol'] + ' @ ' + new_order.get('LimitPrice', '') + ' ' + new_order['OrderType']
-            
+                print(new_order['OrderType'])
+                self.store[order_id][x]['Orders'][0]['Message'] = "Modified order:" \
+                + (self.store[order_id][x]['Orders'][0]['Message'].split(new_order['Symbol'])[0][:-3]).split(":")[-1] \
+                + new_order['Quantity'] + ' ' \
+                + new_order['Symbol'] + ' @ ' \
+                + switch_orderType(new_order['OrderType'])
             return x, res
 
         gather = await asyncio.gather(*[modify(x) for x in self.client__])

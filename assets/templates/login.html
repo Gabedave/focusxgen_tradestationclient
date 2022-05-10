@@ -126,7 +126,7 @@
     <script>
       (async function Accounts(orderId) {
       await fetch(`/api/accounts`).then((res) => res.json()).then(async (allacccounts) => {
-        console.log(allacccounts)
+        // console.log(allacccounts)
 
         table = document.getElementById("ActiveAccounts")
         for (i = 0; i < allacccounts.length; i++) {
@@ -158,6 +158,7 @@
             window.location.href = res.data.redirect;
           } else {
             alert(res.errors.detail)
+            location.reload()
           }
         })
       }

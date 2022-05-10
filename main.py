@@ -1,12 +1,14 @@
-from fastapi.responses import ORJSONResponse
 import uvicorn
+import sys
+
+from fastapi.responses import ORJSONResponse
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from concurrent.futures.process import ProcessPoolExecutor
 
 from routes.home import router as home
 from routes.login import router as login
-from routes.api import router as api
+from routes.api import router as api, pool_
 
 app = FastAPI(title='tradestation focusxgen app', openapi_url="/openapi.json", default_response_class=ORJSONResponse)
 
@@ -18,7 +20,9 @@ app.include_router(api)
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    print('Check Shutdown')
+    pool_().shutdown()
+    print('Shutting down')
+    sys.exit()
 
 
 if __name__ == '__main__':

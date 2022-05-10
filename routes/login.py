@@ -14,11 +14,13 @@ active_client_id:str
 
 @router.get("/", response_class=HTMLResponse)
 async def root(request: Request, code: Optional[str] = None, state: Optional[str]  = None):
-    if pool_().stream: 
-        pool_().shutdown()
-        print('...shutting down')
     if code:
         await client_().profile_complete_login(active_client_id, str(request.url))
+        return templates.TemplateResponse('login.html', {'request':request})
+    await client_().change_trading_mode(True)
+    if pool_().stream:
+        pool_().shutdown()
+        print('...shutting down')
     return templates.TemplateResponse('login.html', {'request':request})
 
 @router.get("/login")
@@ -33,6 +35,7 @@ async def login(client_id: Optional[str] = None):
             active_client_id = client_id
             return RedirectResponse(url)
         elif url == True:
+            client_().save_login(client_id)
             return RedirectResponse('/')
         else:
             return {

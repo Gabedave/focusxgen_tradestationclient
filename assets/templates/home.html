@@ -79,14 +79,14 @@
       </div>
     </div>
 
-    <!-- Create Order form -->
+    <!-- Create Option Order form -->
     <div class="card bg-dark my-2">
       <div class="row my-2 justify-content-center">
         <div id="alert" class="col">
           <div class="row m-0">
             <div class="card-header row gx-0">
               <div class="col align-self-end">
-                <h6 class="">Create Order</h6>
+                <h6 class="">Create Option Order</h6>
               </div>
               <div id="OpenOrClose" form="Order" class="col align-self-end text-end">
                 <div class="small form-check form-check-inline mx-1">
@@ -126,6 +126,12 @@
                   <div class="col align-self-center form-check form-check-inline m-0 mx-1">
                     <input class="form-check-input" type="radio" name="OrderType" id="StopMarket" value="StopMarket">
                     <label class="form-check-label" for="StopMarket">Stop Market</label>
+                  </div>
+                </div>
+                <div class="row" id="TrailingStopRadioDiv" hidden="false">
+                  <div class="col align-self-center form-check form-check-inline m-0 mx-1">
+                    <input class="form-check-input" type="radio" name="OrderType" id="TrailingStopRadio" value="TrailingStopRadio">
+                    <label class="form-check-label" for="TrailingStopRadio">Trailing Stop</label>
                   </div>
                 </div>
               </div>
@@ -201,7 +207,7 @@
               <!-- <div class="col text-center m-1 p-0">
                 <a type="submit" value="Confirm" onclick="ConfirmOrder()" class="btn btn-primary px-5 smallie">Confirm</a>
               </div> -->
-              <div class="col text-center m-1 p-0">
+              <div id="ExecuteDiv" class="col text-center m-1 p-0">
                 <input type="submit" value="Execute" class="btn btn-danger px-5 smallie">
               </div>
             </div>
@@ -332,6 +338,9 @@
               }
               
               $(document).on('submit', '#Order', function() {
+                $("#ExecuteDiv").attr("disabled", "disabled");
+                $("#ExecuteDiv").hide()
+                
                 let data
 
                 const openOrClose = "OpenOrClose=" + getRadioValue("OpenOrClose")
@@ -470,14 +479,17 @@
             </script>
             <script>
               const changeOrderTypeCB = (value) => {
-                getRadioValue("OpenOrClose") == "Close" && value == "StopMarket" ?
-                  document.getElementById('TrailingStopCheckDiv').hidden = false :
-                  document.getElementById('TrailingStopCheckDiv').hidden = true
+                // getRadioValue("OpenOrClose") == "Close" && value == "StopMarket" ?
+                //   document.getElementById('TrailingStopCheckDiv').hidden = false :
+                //   document.getElementById('TrailingStopCheckDiv').hidden = true
 
-                getRadioValue("OpenOrClose") == "Close" ?
-                  document.getElementById('ActivationRulesCheckDiv').hidden = false :
+                if (getRadioValue("OpenOrClose") == "Close") {
+                  document.getElementById('ActivationRulesCheckDiv').hidden = false
+                  document.getElementById('TrailingStopRadioDiv').hidden = false
+                } else {
                   document.getElementById('ActivationRulesCheckDiv').hidden = true
-
+                  document.getElementById('TrailingStopRadioDiv').hidden = true;
+                }
 
                 if (value == 'Limit') {
                   document.getElementById('LimitPriceDiv').hidden = false;
@@ -486,6 +498,7 @@
                   document.getElementById('StopPrice').required = false;
                   if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
                   else document.getElementById('MaxLossDiv').hidden = true;
+                  TrailingStopDisplay(false)
                 }
                 else if (value == 'Market') {
                   document.getElementById('LimitPriceDiv').hidden = true;
@@ -493,6 +506,7 @@
                   document.getElementById('StopPriceDiv').hidden = true;
                   document.getElementById('StopPrice').required = false;
                   document.getElementById('MaxLossDiv').hidden = true;
+                  TrailingStopDisplay(false)
                 }
                 else if (value == 'StopLimit') {
                   document.getElementById('LimitPriceDiv').hidden = false;
@@ -501,6 +515,7 @@
                   document.getElementById('StopPrice').required = true;
                   if (getRadioValue("OpenOrClose") == "Open") document.getElementById('MaxLossDiv').hidden = false;
                   else document.getElementById('MaxLossDiv').hidden = true;
+                  TrailingStopDisplay(false)
                 }
                 else if (value == 'StopMarket') {
                   document.getElementById('LimitPriceDiv').hidden = true;
@@ -508,6 +523,16 @@
                   document.getElementById('StopPriceDiv').hidden = false;
                   document.getElementById('StopPrice').required = true;
                   document.getElementById('MaxLossDiv').hidden = true;
+                  TrailingStopDisplay(false)
+                }
+                else if (value == 'TrailingStopRadio') {
+                  document.getElementById('LimitPriceDiv').hidden = true;
+                  document.getElementById('LimitPrice').required = false;
+                  document.getElementById('StopPriceDiv').hidden = true;
+                  document.getElementById('StopPrice').required = false;
+                  document.getElementById('MaxLossDiv').hidden = true;
+
+                  TrailingStopDisplay(true)
                 }
               }
 
@@ -516,17 +541,20 @@
               });
               $('input[type=radio][name=OpenOrClose]').change(function() {
                 $("#Order").trigger('reset')
-                if (this.value == 'Close') {
-                  document.getElementById('MaxLossDiv').hidden = true;
-                } else if (this.value == 'Open') {
-                  document.getElementById('MaxLossDiv').hidden = false;
-                }
+                changeOrderTypeCB(getRadioValue("OrderType"))
+                // if (this.value == 'Close') {
+                //   document.getElementById('MaxLossDiv').hidden = true;
+                // } else if (this.value == 'Open') {
+                //   document.getElementById('MaxLossDiv').hidden = false;
+                // }
               })
             </script>
           </form>
         </div>
       </div>
     </div>
+
+    
     <div class="m-5"></div>
   </div>
   <!-- Right Cards -->
@@ -584,7 +612,7 @@
         <div class="card-body container small">
           <div id="OrderDetailsCard" class="row justify-content-start">
             <!-- <strong class="m-0 text-primary">Xgen OrderID: <label class='text-light' id="XgenOrderID" for="position-table">---------</label></strong> -->
-            <div>
+            <div class="table-responsive" style="display: block; height: 20rem;">
               <table id="OrdersTable1" class="table table-sm table-borderless table-bordered table-dark mb-1">
                 <thead class="text-center thead-dark">
                   <tr>
@@ -645,29 +673,40 @@
   </script>
 
   <script type="text/javascript">
-    const editCancel = (status, orderCategory) => status === `"Filled"` ? `<div class='btn btn-primary'></div>` : 
+    const editCancel = (status, orderCategory) => ["Filled", "Cancelled", "Expired", "Rejected"].includes(status) ? `<div class='btn btn-primary'></div>` : 
     `<a class='link-light btn btn-sm btn-warning p-0 px-1 mx-1' onclick="ModifyOrder('${orderCategory}')">Modify</a><a class='link-light btn btn-sm btn-danger p-0 px-1 mx-1' onclick="CancelOrder('${orderCategory}')">Cancel</a>`
     
     async function ViewOrders() {
       await fetch(`/api/order/store`).then((res) => res.json()).then(async (order) => {
         if (!order.success) alert(order.errors.error)
         $('#OrderDetails').empty();
-        // console.log(order)
+        console.log(order)
         order = order.data.items
         localStorage.setItem("orders", JSON.stringify(order))
         for (const [orderCategory, clientOrders] of Object.entries(order)) {
           if ($.isEmptyObject(clientOrders)) continue
-          if (Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === undefined || 
-          Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'] === "UROut") continue
-          // console.log(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])
+          let statusDescription = Object.values(clientOrders)[0]['Orders'][0]['StatusDescription']
+          if (statusDescription === undefined) continue 
+          if (statusDescription === "UROut") statusDescription = "Cancelled"
+          let message = Object.values(clientOrders)[0]['Orders'][0]['Message']
+          // console.log(statusDescription)
+          let editable = editCancel(statusDescription, orderCategory)
+          if (statusDescription === "Rejected") {
+            message = Object.values(clientOrders)[0]['Orders'][0]['RejectReason']
+            // editable = ""
+          }
+          if (statusDescription === "Expired") {
+            message = "Order Expired";
+            // editable = ""
+          }
           const data = `<tr>
                           <td>${orderCategory}</td>
-                          <td>${JSON.stringify(Object.values(clientOrders).map((val) => val['Orders'][0]['AccountID']))}</td>
-                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription'])}</td>
-                          <td>${JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['Message'])}</td>
-                          <td>${editCancel(JSON.stringify(Object.values(clientOrders)[0]['Orders'][0]['StatusDescription']), orderCategory)}</td>
+                          <td>${Object.values(clientOrders).map((val) => val['Orders'][0]['AccountID'])}</td>
+                          <td>${statusDescription}</td>
+                          <td>${message}</td>
+                          <td>${editable}</td>
                         </tr>`
-          $('#OrderDetails').append(data)
+          $('#OrderDetails').prepend(data)
         }
       })
     }
@@ -738,24 +777,27 @@
       })
     }
 
-    async function ChangeTradingMode() {
-      const mode = document.getElementById('tradingMode').innerHTML;
+    async function ChangeTradingMode(changeTo=null) {
+      if (!changeTo) {
+        const mode = document.getElementById('tradingMode').innerHTML;
+        mode === "SIM" ? changeTo = "LIVE" : changeTo = "SIM"
+      }
       // console.log(mode)
-      if (mode === "SIM") {
+      if (changeTo === "LIVE") {
         await fetch('/api/trader/real')
         .then(response => response.json())
         .then(res => {
           if (res.success) window.location.reload()
           else {alert(`An Error Occured: ${res.errors.error}`)}
         })
-      } else if (mode === "LIVE") {
+      } else if (changeTo === "SIM") {
         await fetch('/api/trader/paper')
         .then(response => response.json())
         .then(res => {
           if (res.success) window.location.reload()
           else {alert(`An Error Occured: ${res.errors.error}`)}
         })
-      }
+      } else throw new Error(`Invalid Trading Mode. Valid Values are "SIM" or "LIVE"`)
     }
 
   </script>
@@ -874,6 +916,8 @@
       document.getElementById("MaxLoss").required = false;
       document.getElementById("MaxLossDiv").hidden = true;
       document.getElementById("TradeActionDiv").hidden = true;
+      document.getElementById("ActivationRulesCheckDiv").hidden = false;
+      document.getElementById("TrailingStopRadioDiv").hidden = false;
 
       TrailingStopDisplay(false)
       document.getElementById('TrailingStopCheckDiv').hidden = true
@@ -918,6 +962,10 @@
           await UpdatePositions(res.data)
         })
       }, 1500);
+
+      setInterval(async function() {
+        await ViewOrders()
+      }, 10000);
     });
   </script>
 

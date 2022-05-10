@@ -1,3 +1,4 @@
+from email import message
 from pprint import pprint
 from fastapi import APIRouter, Response, Request, background, status, Form, BackgroundTasks
 from typing import Optional, Union
@@ -16,28 +17,35 @@ from config import settings
 from client.starter import Client
 
 
-class Positions(object):
+class Positions():
     def __init__(self):
         self.stream = False
         self.pool = False
 
-    def shutdown(self):
-        global shutdown
-        shutdown = True
+    def start(self):
+        self.stream = True
+        print("Starting Executor")
+        get_all_positions_mod(self.pool)
 
-class Base(): 
+    def shutdown(self):
+        self.pool.close()
+        print("Executor Closed")
+        self.stream = False
+
+
+class Base():
+    positions = None
 
     def reset(self):
+        if self.positions:
+            self.positions.shutdown()
         self.config = settings.load_config()
         self.client = Client(self.config)
         self.positions = Positions()
 
+
 base = Base()
 base.reset()
-restart = False
-
-# client = base.client
-# positions = base.positions
 
 router = APIRouter()
 
@@ -76,105 +84,70 @@ async def start():
     }
 
 @router.get("/api/positions")
-async def posit():
-    # file_path = os.path.join(os.getcwd(), 'client/positions/positions.json')
-    # print(file_path)
-    global restart
-    if restart:
-        backgroundtask = BackgroundTasks()
-        await stream(backgroundtask)
-        restart = False
-    
-    if base.positions.stream:
-        return {
-            "success": True,
-            "data": base.client.positions
-        }
-    else:
+async def posit(background_tasks: BackgroundTasks):
+    try:
+        if not base.positions.stream:
+            print("starting stream")
+            await stream(background_tasks)
+        
+        else:
+            return {
+                "success": True,
+                "data": base.client.positions
+            }
+    except Exception as e:
         return {
             "success": False,
             "errors": {
-                "error": "Internal error"
+                "error": "Internal error",
+                "detail": e.message
             }
         }
-    
-# @router.get("/api/positions/close")
-# async def close_positions():
-#     response = client
-#     # print(file_path)
-    
-#     if response:
-#         return {
-#             "success": True,
-#             "data": client.positions
-#         }
-#     else:
-#         return {
-#             "success": False,
-#             "errors": {
-#                 "error": "Internal error"
-#             }
-#         }
     
 # Positions Process
 def get_all_positions_mod(executor):
     while True:
         print("...getting positions")
         
-        global shutdown
-        # print("shutdown", shutdown)
-        global start
         start_ = time.time()
-        if shutdown:
-            executor.close()
-            base.positions.stream = False
-            shutdown = False
-            sys.exit()
-        else:
+
+        def run(positions):
+            loop = asyncio.new_event_loop()
             try:
-                executor.apply_async(asyncio.run(base.client.get_all_positions()))
-                
+                loop.run_until_complete(base.client.get_all_positions())
+                # asyncio.run()
             except Exception as e:
-                print(e)
-                shutdown = True
-                global restart
-                restart = True
+                positions.stream = False
+                print("Error in Background task", e)
+                positions.shutdown()
+                # sys.exit()
+            finally:
+                loop.close()
+        
+        executor.apply_async(run(base.positions))
         
         posit = base.client.positions
+        # print(posit)
         end = time.time() - start_
         if end < 1.2:
             time.sleep(1.2 - end)
-        
-        # dir_path = os.getcwd()
-        # filename = 'positions.json'
-        # file_path = os.path.join(dir_path, 'client/positions', filename)
-
-        # with open(file_path, 'w+') as f:
-        #     json.dump(posit, f, indent=4)
 
 def positions_task():
     # loop = asyncio.get_event_loop()
     # asyncio.set_event_loop(loop)
-    with multiprocessing.Pool(processes=20) as p:
+    with multiprocessing.Pool(os.cpu_count()) as p:
         # loop = asyncio.new_event_loop()
-        global shutdown
-        shutdown = False
         base.positions.pool = p
         
-        get_all_positions_mod(base.positions.pool)
-        # loop.run_in_executor(base.positions.pool, get_all_positions_mod(base.positions.pool))
+        base.positions.start()
     
 
 @router.get("/api/positions/stream", status_code=HTTPStatus.ACCEPTED)
 async def stream(background_task: BackgroundTasks):
-    # return StreamingResponse(client.get_all_positions_stream())
-    global shutdown
     if base.positions.stream:
         print("..stream already running")
     else:
-        shutdown = False
         background_task.add_task(positions_task)
-        base.positions.stream = True
     
     return {
         "success": True
@@ -378,7 +351,8 @@ async def create_order(
             if Mode == "ModifyOrder":
                 OrderId = OrderId.strip()
                 print("modify")
-                resp = await base.client.modify_order(OrderId, {x: y for x, y in order.items() if x in ["Symbol", "Quantity", "OrderType", "LimitPrice", "AdvancedOptions"]})
+                resp = await base.client.modify_order(OrderId, {x: y for x, y in order.items() \
+                    if x in ["Symbol", "Quantity", "OrderType", "LimitPrice", "StopPrice", "AdvancedOptions"]})
                 await base.client.store_store()
             else:
                 resp = await base.client.execute_order(order)
